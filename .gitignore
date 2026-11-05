@@ -1,0 +1,4 @@
+# Never commit an unlocked hub file. Only the locked index.html belongs here.
+LEAD Ops Hub*.html
+LEAD-Ops-Hub*.html
+*.json
