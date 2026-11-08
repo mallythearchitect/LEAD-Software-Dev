@@ -11,3 +11,5 @@ personal-patches*
 # A place for private files if you ever need one inside this folder
 _private/
 .DS_Store
+# Local editor and assistant settings
+.claude/
