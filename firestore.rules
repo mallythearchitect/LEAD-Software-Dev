@@ -1,0 +1,160 @@
+rules_version = '2';
+
+/* LEAD Ops Hub — who can read and change what in the team database.
+   This is the lock. The website is public, so everything that keeps people's data private
+   happens here, on Google's servers, no matter what the page does.
+
+   To publish: Firebase console → Firestore Database → Rules → replace everything with this
+   file → Publish. Do it again whenever this file changes.
+
+   Levels (role in access/{email}): exec, coord (see every center), asst (their center),
+   special (the pages the owner picked), canv (canvass for their center), trial (canvasser
+   pages; only their own shifts and signers; ends on `until`).
+   The owner (system/owner) can do everything. js/lead-core.js mirrors these rules for the
+   offline test, so change both together. */
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ---------------------------------------------------------------- who is asking
+    function signedIn() {
+      return request.auth != null && request.auth.token.email is string
+        && request.auth.token.email_verified == true;
+    }
+    function me() { return request.auth.token.email.lower(); }
+    function accPath(e) { return /databases/$(database)/documents/access/$(e); }
+    function ownerPath() { return /databases/$(database)/documents/system/owner; }
+    function isOwner() { return signedIn() && exists(ownerPath()) && get(ownerPath()).data.email == me(); }
+    function acc() { return get(accPath(me())).data; }
+    function live() {
+      return signedIn() && exists(accPath(me()))
+        && acc().role in ['exec', 'coord', 'asst', 'special', 'canv', 'trial']
+        && (acc().get('until', null) == null || request.time < acc().until);
+    }
+    function role() { return acc().role; }
+    function lead() { return role() in ['exec', 'coord']; }
+    function staff() { return role() in ['exec', 'coord', 'asst']; }
+    function myCenter() { return acc().get('center', ''); }
+    function pages() { return acc().get('pages', []); }
+    function grantContacts() { return role() == 'special' && pages().hasAny(['people', 'blead', 'map', 'letters', 'board', 'center', 'org']); }
+    function grantCanvass() { return role() == 'special' && pages().hasAny(['team']); }
+    function validCenter(c) { return c in ['east-hartford', 'new-britain', 'waterbury', 'danbury', 'bridgeport', 'new-haven', 'norwich']; }
+
+    // ---------------------------------------------------------------- kinds of records
+    function orgwide() { return ['playbook', 'questions', 'videos', 'sessions', 'meta', 'geo', 'cv']; }
+    function scoped() { return ['tasks', 'due', 'edits', 'added', 'people', 'board', 'letters', 'ready', 'proposals', 'meetings', 'team', 'shifts', 'signers']; }
+    function canvass() { return ['team', 'shifts', 'signers']; }
+    function contacts() { return ['edits', 'added', 'people', 'board', 'letters']; }
+    function work() { return ['tasks', 'due', 'ready', 'proposals', 'meetings']; }
+    function owned() { return ['shifts', 'signers']; }
+    function reserved() { return ['access', 'system', 'roster', 'requests', 'ref']; }
+
+    // r is the stored document (resource), which is null when it doesn't exist yet.
+    function inMine(r) { return myCenter() != '' && (r.data.center == myCenter() || r.data.center == 'all'); }
+    function canRead(col, r) {
+      return isOwner() || (live() && (
+        col in orgwide()
+        || (col == 'ptasks' && r.data._owner == me())
+        || (col in scoped() && (
+             lead()
+          || (role() == 'asst' && inMine(r))
+          || (col == 'added' && r.data.kind == 'event' && inMine(r))
+          || (col in canvass() && (role() == 'canv' || grantCanvass()) && inMine(r))
+          || (col in contacts() && grantContacts() && inMine(r))
+          || (col in work() && role() == 'special' && inMine(r))
+          || (col in owned() && role() == 'trial' && r.data._by == me())
+        ))
+      ));
+    }
+    // d is the data being written, or the stored data being replaced or deleted.
+    function mine(d) { return myCenter() != '' && d.center == myCenter(); }
+    function canWrite(col, d) {
+      return isOwner() || (live() && (
+        (col in ['meta', 'cv'] && lead())
+        || (col in orgwide() && !(col in ['meta', 'cv']) && (staff() || (col == 'geo' && role() in ['canv', 'special'])))
+        || (col == 'ptasks' && d._owner == me())
+        || (col in scoped() && (
+             (lead() && (validCenter(d.center) || d.center == 'all'))
+          || (role() == 'asst' && mine(d))
+          || (col in canvass() && grantCanvass() && mine(d))
+          || (col in contacts() && grantContacts() && mine(d))
+          || (col in work() && role() == 'special' && mine(d))
+          // canvassers and trials log their own shifts and signers, and change only those
+          || (col in owned() && role() in ['canv', 'trial'] && mine(d) && d._by == me())
+        ))
+      ));
+    }
+
+    // ---------------------------------------------------------------- the hub's records
+    match /{col}/{id} {
+      allow read: if !(col in reserved()) && canRead(col, resource);
+      allow create: if !(col in reserved()) && canWrite(col, request.resource.data);
+      allow update: if !(col in reserved()) && canWrite(col, request.resource.data) && canWrite(col, resource.data);
+      allow delete: if !(col in reserved()) && canWrite(col, resource.data);
+    }
+
+    // ---------------------------------------------------------------- the access list
+    match /access/{e} {
+      allow get: if signedIn() && (e == me() || isOwner());
+      allow list: if isOwner();
+      // The owner adds people. The very first owner sets themselves up while claiming the hub.
+      allow create: if isOwner() || (signedIn() && e == me() && !exists(ownerPath())
+        && getAfter(ownerPath()).data.email == me()
+        && request.resource.data.role in ['exec', 'coord', 'asst', 'special', 'canv', 'trial']);
+      // People may pick their center once (the owner changes it after that) and choose which centers to look at.
+      allow update: if isOwner() || (signedIn() && e == me() && selfEdit());
+      allow delete: if isOwner() && e != me();
+    }
+    function selfEdit() {
+      let changed = request.resource.data.diff(resource.data).affectedKeys();
+      return changed.hasOnly(['viewCenters', 'center'])
+        && (!changed.hasAny(['center']) || (resource.data.get('center', '') == ''
+            && (validCenter(request.resource.data.center) || (request.resource.data.center == 'all' && resource.data.role in ['exec', 'coord']))))
+        && (!changed.hasAny(['viewCenters']) || (request.resource.data.viewCenters is list && request.resource.data.viewCenters.size() <= 7));
+    }
+
+    // People who signed in and are waiting to be let in. They can only file their own.
+    match /requests/{e} {
+      allow get: if signedIn() && (e == me() || isOwner());
+      allow list, delete: if isOwner();
+      allow create, update: if signedIn() && e == me()
+        && request.resource.data.keys().hasOnly(['email', 'googleName', 'photo', 'at'])
+        && request.resource.data.email == me()
+        && request.resource.data.at == request.time
+        && request.resource.data.googleName is string && request.resource.data.googleName.size() < 200
+        && request.resource.data.photo is string && request.resource.data.photo.size() < 2000;
+    }
+
+    // The owner's name list (names and levels only).
+    match /roster/{id} {
+      allow read, write: if isOwner();
+    }
+
+    // Who owns the hub. Claimed once; to hand it over, change it in the Firebase console.
+    match /system/owner {
+      allow get: if signedIn();
+      allow create: if signedIn() && !exists(ownerPath()) && request.resource.data.email == me()
+        && existsAfter(accPath(me()));
+      allow update, delete: if false;
+    }
+    // Which built-in lists are loaded.
+    match /system/refindex {
+      allow get: if isOwner() || live();
+      allow write: if isOwner();
+    }
+    match /system/{other} {
+      allow read, write: if isOwner();
+    }
+
+    // The built-in lists, in pieces: core (events, meetings, schools) for everyone at that center,
+    // canvass (signers) for canvass levels, contacts (people, letters, board) for staff.
+    match /ref/{id} {
+      allow get: if isOwner() || (live()
+        && (resource.data.center == 'all' || lead() || resource.data.center == myCenter())
+        && (resource.data.tier == 'core'
+          || (resource.data.tier == 'canvass' && (staff() || role() == 'canv' || grantCanvass()))
+          || (resource.data.tier == 'contacts' && (staff() || grantContacts()))));
+      allow list, write: if isOwner();
+    }
+  }
+}

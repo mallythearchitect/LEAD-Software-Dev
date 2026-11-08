@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<title>Hub Owner Page</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Instrument+Sans:wght@400;500;600&display=swap">
+<style>
+:root{
+  --navy:#15213a; --bg:#f6f7fb; --surface:#ffffff; --surface2:#eef1f7; --line:#dfe4ee; --ink:#15213a; --muted:#5d6b85;
+  --blue:#2f6fe0; --blue-soft:#e3ecfc; --green:#2f9e44; --green-soft:#e1f3e4; --red:#c23b3b; --red-soft:#f9e3e3;
+  --orange:#b8650a; --orange-soft:#fdeedb; --sand:#f3e8d2; --sand-ink:#6b4e16; --sand-line:#e3d2ad;
+  --display:"Bricolage Grotesque","Helvetica Neue",Arial,sans-serif; --body:"Instrument Sans","Segoe UI",system-ui,sans-serif;
+  --shadow:0 12px 40px rgba(21,33,58,.14); color-scheme:light;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --navy:#0c1222; --bg:#0f1626; --surface:#161f36; --surface2:#1d2742; --line:#2a365a; --ink:#e6ebf7; --muted:#93a1bf;
+  --blue:#6b9cf5; --blue-soft:#1b2c52; --green:#5ec46f; --green-soft:#17331d; --red:#ef7f7f; --red-soft:#3d1d1d;
+  --orange:#f0a04a; --orange-soft:#3a2a14; --sand:#2e2a1f; --sand-ink:#e5cf9c; --sand-line:#4a4230; --shadow:0 12px 40px rgba(0,0,0,.5); color-scheme:dark } }
+:root[data-theme="dark"]{
+  --navy:#0c1222; --bg:#0f1626; --surface:#161f36; --surface2:#1d2742; --line:#2a365a; --ink:#e6ebf7; --muted:#93a1bf;
+  --blue:#6b9cf5; --blue-soft:#1b2c52; --green:#5ec46f; --green-soft:#17331d; --red:#ef7f7f; --red-soft:#3d1d1d;
+  --orange:#f0a04a; --orange-soft:#3a2a14; --sand:#2e2a1f; --sand-ink:#e5cf9c; --sand-line:#4a4230; --shadow:0 12px 40px rgba(0,0,0,.5); color-scheme:dark }
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 var(--body);-webkit-font-smoothing:antialiased}
+button,input,select,textarea{font:inherit;color:inherit}
+a{color:var(--blue)}
+h1,h2,h3{margin:0;font-family:var(--display);text-wrap:balance}
+.top{background:var(--navy);color:#e6ebf7;padding:14px 16px}
+.top-in{max-width:960px;margin:0 auto;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.mark{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;background:linear-gradient(135deg,#3c78e2,#7968f7);color:#fff;font:800 17px var(--display);flex:none}
+.top b{font:800 17px var(--display);display:block;line-height:1.1}
+.top small{color:#93a1bf;font-size:12px}
+.top .sp{flex:1}
+.top a,.top button.lnk{color:#c9d4ea;font-size:13px;background:none;border:0;cursor:pointer;padding:4px 0;text-decoration:underline}
+main{max-width:960px;margin:0 auto;padding:18px 16px 60px}
+.tabs{display:flex;gap:6px;flex-wrap:wrap;margin:4px 0 16px}
+.tabs button{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:7px 14px;cursor:pointer;font-weight:600;font-size:14px}
+.tabs button[aria-selected="true"]{background:var(--blue);border-color:var(--blue);color:#fff}
+.tabs .n{display:inline-block;min-width:20px;padding:0 6px;margin-left:4px;border-radius:999px;background:var(--red);color:#fff;font-size:12px;line-height:18px;text-align:center}
+.tabs button[aria-selected="true"] .n{background:#fff;color:var(--blue)}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:12px}
+.card h2{font-size:19px;margin-bottom:4px}
+.card h3{font-size:16px}
+.muted{color:var(--muted)}
+.small{font-size:13px}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.grow{flex:1;min-width:0}
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:9px;padding:8px 14px;cursor:pointer;font-weight:600;font-size:14px;white-space:nowrap;text-decoration:none;color:inherit;display:inline-flex;align-items:center;gap:6px}
+.btn:hover{background:var(--surface2)}
+.btn.pri{background:var(--blue);border-color:var(--blue);color:#fff}
+.btn.pri:hover{filter:brightness(1.07)}
+.btn.warn{color:var(--red);border-color:var(--red-soft)}
+.btn.sm{padding:5px 10px;font-size:13px}
+.btn:disabled{opacity:.55;cursor:default}
+label.f{display:block;font-size:12px;font-weight:600;color:var(--muted);margin-bottom:4px}
+input[type=text],input[type=email],input[type=number],input[type=date],select,textarea{width:100%;padding:8px 10px;border-radius:9px;border:1px solid var(--line);background:var(--surface2)}
+textarea{min-height:120px;font:13px/1.4 ui-monospace,SFMono-Regular,Menlo,monospace}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px}
+.person{display:flex;gap:12px;align-items:flex-start}
+.av{width:38px;height:38px;border-radius:50%;display:grid;place-items:center;background:var(--blue-soft);color:var(--blue);font:800 13px var(--display);overflow:hidden;flex:none}
+.av img{width:100%;height:100%;object-fit:cover}
+.who b{display:block;overflow-wrap:anywhere}
+.who span{color:var(--muted);font-size:13px;overflow-wrap:anywhere}
+.match{margin:10px 0;padding:9px 11px;border-radius:10px;font-size:14px}
+.match.good{background:var(--green-soft)}
+.match.maybe{background:var(--orange-soft)}
+.match.none{background:var(--surface2);color:var(--muted)}
+.pill{display:inline-block;padding:1px 9px;border-radius:999px;font-size:12px;font-weight:600;background:var(--surface2);color:var(--muted)}
+.pill.blue{background:var(--blue-soft);color:var(--blue)}
+.pill.red{background:var(--red-soft);color:var(--red)}
+.pill.green{background:var(--green-soft);color:var(--green)}
+.pages{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:4px 10px;font-size:13.5px;margin-top:6px}
+.pages label{display:flex;gap:6px;align-items:center;cursor:pointer}
+.note{padding:10px 12px;border-radius:10px;background:var(--sand);color:var(--sand-ink);border:1px solid var(--sand-line);font-size:13.5px;margin-bottom:12px}
+.list{display:flex;flex-direction:column;gap:8px}
+.line{display:flex;gap:10px;align-items:center;padding:10px 12px;border:1px solid var(--line);border-radius:11px;background:var(--surface);flex-wrap:wrap}
+.line .grow b{display:block;overflow-wrap:anywhere}
+details.edit{margin-top:10px}
+details.edit summary{cursor:pointer;color:var(--blue);font-weight:600;font-size:14px}
+.toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:var(--navy);color:#fff;padding:10px 16px;border-radius:10px;box-shadow:var(--shadow);font-size:14px;z-index:50;max-width:calc(100vw - 32px)}
+.empty{padding:20px;text-align:center;color:var(--muted);border:1px dashed var(--line);border-radius:12px}
+.bar{height:6px;border-radius:3px;background:var(--surface2);overflow:hidden;margin-top:8px}
+.bar i{display:block;height:100%;background:var(--blue);width:0}
+.spin{width:16px;height:16px;border-radius:50%;border:2px solid var(--line);border-top-color:var(--blue);animation:sp .8s linear infinite;display:inline-block;vertical-align:-3px;margin-right:8px}
+@keyframes sp{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.spin{animation:none}}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+@media (max-width:600px){.line .acts{width:100%}}
+</style>
+</head>
+<body>
+<header class="top"><div class="top-in">
+  <span class="mark" aria-hidden="true">L</span>
+  <div><b>Owner page</b><small>LEAD Ops Hub</small></div>
+  <span class="sp"></span>
+  <span id="topWho" class="small"></span>
+  <a id="backLink" href="./">Back to the hub</a>
+  <button class="lnk" id="outBtn" hidden>Sign out</button>
+</div></header>
+<main id="main" aria-live="polite"><p class="muted"><span class="spin" aria-hidden="true"></span>Loading…</p></main>
+<noscript><p style="padding:24px">This page needs JavaScript turned on.</p></noscript>
+<script type="module" src="js/admin.js"></script>
+</body>
+</html>

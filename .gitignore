@@ -1,4 +1,13 @@
-# Never commit an unlocked hub file. Only the locked index.html belongs here.
+# Private files. This repo is public: never commit any of these.
+# The unlocked single-file hub (holds signers' names, addresses and phones)
 LEAD Ops Hub*.html
 LEAD-Ops-Hub*.html
+# Data bundles, backups and exports
 *.json
+# Name lists
+*.csv
+# The build tool's private list of personal wording
+personal-patches*
+# A place for private files if you ever need one inside this folder
+_private/
+.DS_Store
