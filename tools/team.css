@@ -556,3 +556,8 @@ select.gf-in{padding:8px 0}
   :root[data-mode="app"] .topbar .sp{display:block;order:1;flex:1}
 }
 @media print{.ask-btn,.ask-panel{display:none!important}}
+
+/* ---------- feedback in the Messages tab ---------- */
+.ask-msg.fb{border-left:3px solid var(--lead-gold)}
+.ask-msg.fb.new{background:color-mix(in srgb,var(--lead-gold) 12%,transparent)}
+.ask-msg.fb .linkbtn{margin-top:4px}

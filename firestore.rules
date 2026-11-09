@@ -220,6 +220,12 @@ service cloud.firestore {
       allow get: if isOwner() || live();
       allow write: if isOwner();
     }
+    // Where a copy of each feedback response goes (owner page → Feedback): the address of a Google
+    // Apps Script web app that drops the response in the owner's Google Sheet and inbox.
+    match /system/feedbackHook {
+      allow get: if isOwner() || live();
+      allow write: if isOwner();
+    }
     match /system/{other} {
       allow read, write: if isOwner();
     }

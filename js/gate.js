@@ -9,7 +9,7 @@
 const VERSION = new URL(import.meta.url).searchParams.get("v") || "";
 const stamped = p => p + (VERSION ? "?v=" + encodeURIComponent(VERSION) : "");
 // Both are loaded with gate.js's own build stamp, so a new gate never runs against a cached old copy.
-const [{ CENTERS, CENTER_IDS, ROLES, OWNER_VIEWS, roleLabel, centerName, grantsForPages, tierAllowed, assembleData, makeHubDB }, { isUnlocked, lockScreen, lockAgain, verify }] =
+const [{ CENTERS, CENTER_IDS, ROLES, OWNER_VIEWS, roleLabel, centerName, grantsForPages, tierAllowed, assembleData, makeHubDB, FEEDBACK_FORMS }, { isUnlocked, lockScreen, lockAgain, verify }] =
   await Promise.all([import(stamped("./lead-core.js")), import(stamped("./lock.js"))]);
 
 const $ = s => document.querySelector(s);
@@ -269,6 +269,8 @@ function teamApi(u, acc, isOwner) {
     getCodes: c => FBX.getCodes(c),
     listRoster: () => FBX.listRoster(),
     getAI: () => (FBX.getAI ? FBX.getAI() : Promise.resolve(null)),
+    feedbackForms: FEEDBACK_FORMS,
+    getFeedbackHook: () => (FBX.getFeedbackHook ? FBX.getFeedbackHook().catch(() => null) : Promise.resolve(null)),
     logActivity: d => (FBX.logActivity ? FBX.logActivity({ ...d, name, center }) : Promise.resolve()),
     watchActivity: cb => (FBX.watchActivity ? FBX.watchActivity(cb, warn("activity")) : () => {}),
     verifyPassword: pw => verify(pw),

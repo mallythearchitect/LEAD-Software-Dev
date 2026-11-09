@@ -2,7 +2,7 @@
    Let people in (with a suggestion from the name list), set each person's level and center, keep
    the name list, and load or remove data sets. Only the hub's owner can use it; firestore.rules
    refuses everyone else, so this page is a convenience, not the lock. */
-import { CENTERS, ROLES, ROLE_ORDER, roleLabel, centerName, PAGES, TRIAL_DAYS, rosterMatches, nameScore, bundleOps, unbundleOps, refId, SCOPED, ORGWIDE, PERSONAL } from "./lead-core.js";
+import { CENTERS, ROLES, ROLE_ORDER, roleLabel, centerName, PAGES, TRIAL_DAYS, rosterMatches, nameScore, bundleOps, unbundleOps, refId, SCOPED, ORGWIDE, PERSONAL, FEEDBACK_FORMS } from "./lead-core.js";
 import { demoBundle, DEMO_OTHERS_LABEL } from "./demo-data.js";
 import { isUnlocked, lockAgain } from "./lock.js";
 
@@ -139,9 +139,11 @@ function notOwnerCard(owner) {
 
 // ---------------------------------------------------------------- owner view
 async function loadAll() {
-  const [requests, access, roster, index, codes, ai] = await Promise.all([FBX.listCol("requests"), FBX.listCol("access"), FBX.listCol("roster"), FBX.getRefIndex(),
-    FBX.listCol("codes").catch(() => []), (FBX.getAI ? FBX.getAI() : Promise.resolve(null)).catch(() => null)]);
-  S.codes = codes.map(c => c.id); S.ai = ai;
+  const [requests, access, roster, index, codes, ai, feedback, hook] = await Promise.all([FBX.listCol("requests"), FBX.listCol("access"), FBX.listCol("roster"), FBX.getRefIndex(),
+    FBX.listCol("codes").catch(() => []), (FBX.getAI ? FBX.getAI() : Promise.resolve(null)).catch(() => null),
+    FBX.listCol("feedback").catch(() => []), (FBX.getFeedbackHook ? FBX.getFeedbackHook() : Promise.resolve(null)).catch(() => null)]);
+  S.codes = codes.map(c => c.id); S.ai = ai; S.fbHook = hook;
+  S.feedback = feedback.sort((a, b) => (toDate(b.at) || 0) - (toDate(a.at) || 0));
   const has = new Set(access.map(a => a.id));
   S.requests = requests.filter(r => !has.has(r.id)).sort((a, b) => (toDate(b.at) || 0) - (toDate(a.at) || 0));
   requests.filter(r => has.has(r.id)).forEach(r => FBX.delRaw("requests", r.id).catch(() => {}));   // already let in
@@ -155,8 +157,8 @@ async function refresh() { await loadAll(); render(); }
 function render() {
   const n = S.requests.length;
   const tab = (id, label, count) => `<button role="tab" data-tab="${id}" aria-selected="${S.tab === id}">${label}${count ? ` <span class="n">${count}</span>` : ""}</button>`;
-  main(`<div class="tabs" role="tablist">${tab("wait", "Waiting", n)}${tab("people", `People (${S.access.length})`)}${tab("roster", `Name list (${S.roster.length})`)}${tab("data", "Data")}</div>
-    <div id="pane">${({ wait: paneWait, people: panePeople, roster: paneRoster, data: paneData })[S.tab]()}</div>`);
+  main(`<div class="tabs" role="tablist">${tab("wait", "Waiting", n)}${tab("people", `People (${S.access.length})`)}${tab("roster", `Name list (${S.roster.length})`)}${tab("data", "Data")}${tab("feedback", `Feedback (${(S.feedback || []).length})`)}</div>
+    <div id="pane">${({ wait: paneWait, people: panePeople, roster: paneRoster, data: paneData, feedback: paneFeedback })[S.tab]()}</div>`);
 }
 
 function bestMatch(r) {
@@ -317,6 +319,91 @@ function paneData() {
     <div class="card"><h2>Backup</h2><p class="small muted">Downloads everything in the team database as one file: people, saved work and lists. It has private details, so keep it somewhere safe.</p>
       <button class="btn" data-act="backup">Download a full backup</button></div>`;
 }
+// ---- feedback: every response, as a list, a CSV, plain text, and (optionally) a copy to the owner's Google Sheet + inbox
+const FB_HOOK_SCRIPT = `/** LEAD feedback hook (Google Apps Script).
+ *  Every feedback form sent in the hub also lands in a Google Sheet in your Drive and in your inbox.
+ *
+ *  Set-up, once (about five minutes):
+ *   1. Go to script.google.com, signed in as yourself → New project → name it "LEAD feedback hook".
+ *   2. Replace everything in the editor with this file → save.
+ *   3. Deploy → New deployment → gear icon → Web app → Execute as "Me", Who has access "Anyone" → Deploy.
+ *   4. Allow access when asked (Advanced → Go to LEAD feedback hook → Allow). It only touches a sheet it creates
+ *      and sends mail from you to you.
+ *   5. Copy the Web app URL (ends in /exec) → LEAD owner page → Feedback → paste → Save. Press "Send a test".
+ *  The sheet "LEAD feedback" appears in your Drive after the first response; the URL itself shows where it is.
+ */
+var SHEET_NAME = "LEAD feedback";
+
+function doPost(e) {
+  var d = JSON.parse(e.postData.contents);
+  if (!d || !d.title || !Array.isArray(d.answers)) return out_("ignored");
+  var ss = sheet_(), tab = ss.getSheetByName(d.title) || ss.insertSheet(d.title);
+  if (tab.getLastRow() === 0) {
+    tab.appendRow(["When", "Name", "Level", "Center", "Signed in as", "Test?"].concat(d.answers.map(function (a) { return a.q; })));
+    tab.setFrozenRows(1);
+  }
+  tab.appendRow([d.at ? new Date(d.at) : new Date(), d.name || "", d.role || "", d.center || "", d.by || "", d.test ? "test" : ""]
+    .concat(d.answers.map(function (a) { return a.a || ""; })));
+  var me = Session.getEffectiveUser().getEmail();
+  var lines = d.answers.filter(function (a) { return a.a; }).map(function (a) { return a.q + "\\n    " + a.a; }).join("\\n\\n");
+  MailApp.sendEmail(me, "LEAD feedback: " + d.title + " from " + (d.name || "someone") + (d.test ? " (test)" : ""),
+    (d.name || "Someone") + " (" + [d.role, d.center].filter(Boolean).join(", ") + ")\\n\\n" + lines + "\\n\\nAll responses: " + ss.getUrl());
+  return out_("ok");
+}
+
+function doGet() { return out_("The LEAD feedback hook is up. Responses go to: " + sheet_().getUrl()); }
+
+function sheet_() {
+  var p = PropertiesService.getScriptProperties(), id = p.getProperty("sheet");
+  if (id) { try { return SpreadsheetApp.openById(id); } catch (e) {} }
+  var ss = SpreadsheetApp.create(SHEET_NAME);
+  p.setProperty("sheet", ss.getId());
+  return ss;
+}
+
+function out_(t) { return ContentService.createTextOutput(t); }
+`;
+function fbRow(r, test) {
+  const F = FEEDBACK_FORMS[r.kind] || { title: r.kind, qs: [] }, A = r.answers || {}, at = toDate(r.at);
+  return { kind: r.kind, title: F.title, name: r.name || "", role: roleLabel(r.role) || r.role || "", center: r.center ? centerName(r.center) : "", by: r.by || "",
+    at: at ? at.toISOString() : new Date().toISOString(), test: !!test,
+    answers: F.qs.map(q => ({ q: q.q, a: Array.isArray(A[q.k]) ? A[q.k].join(", ") : (A[q.k] == null ? "" : String(A[q.k])) })) };
+}
+function fbCsv() {
+  const cell = v => `"${String(v == null ? "" : v).replace(/"/g, '""')}"`, out = [], L = [...(S.feedback || [])].reverse();
+  for (const kind of Object.keys(FEEDBACK_FORMS)) {
+    const R = L.filter(r => r.kind === kind); if (!R.length) continue; const F = FEEDBACK_FORMS[kind];
+    out.push(cell(F.title)); out.push(["When", "Name", "Level", "Center", "Signed in as", ...F.qs.map(q => q.q)].map(cell).join(","));
+    R.forEach(r => { const w = fbRow(r); out.push([w.at, w.name, w.role, w.center, w.by, ...w.answers.map(a => a.a)].map(cell).join(",")); }); out.push("");
+  }
+  return out.join("\r\n");
+}
+function fbText() {
+  return (S.feedback || []).map(r => { const w = fbRow(r);
+    return `${w.title} · ${w.name}${w.role ? " · " + w.role : ""}${w.center ? " · " + w.center : ""} · ${new Date(w.at).toLocaleString()}\n` + w.answers.filter(a => a.a).map(a => `  ${a.q}\n    ${a.a}`).join("\n"); }).join("\n\n");
+}
+const fbPost = (url, payload) => fetch(url, { method: "POST", mode: "no-cors", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(payload) });
+const FB_HOOK_RE = /^https:\/\/script\.google\.com\/macros\/s\/[\w-]+\/exec$/;
+function paneFeedback() {
+  const L = S.feedback || [], n = k => L.filter(r => r.kind === k).length, hook = S.fbHook && S.fbHook.url;
+  const one = r => { const w = fbRow(r);
+    return `<details class="line" style="display:block"><summary style="cursor:pointer;display:flex;gap:10px;flex-wrap:wrap;align-items:baseline"><b>${esc(w.name || w.by)}</b><span class="small muted">${esc([w.title, w.role, w.center, ago(toDate(r.at))].filter(Boolean).join(" · "))}</span></summary>
+      <dl style="margin:10px 0 0;display:grid;gap:6px">${w.answers.filter(a => a.a).map(a => `<dt class="small muted">${esc(a.q)}</dt><dd style="margin:0 0 4px;white-space:pre-wrap">${esc(a.a)}</dd>`).join("") || "<dd class=\"small muted\">No answers filled in.</dd>"}</dl></details>`; };
+  return `<div class="card"><h2>Responses (${L.length})</h2>
+      <p class="small muted">Every feedback form the team sends from Ask LEAD → /feedback, newest first: ${n("demo")} software demo, ${n("training")} training. Also in the hub under Tools &amp; resources → Feedback (coordinators and up), and in the Firebase console under <code>feedback</code>. Nothing here goes out by text or email unless the copy below is connected.</p>
+      <div class="row" style="gap:8px;flex-wrap:wrap;margin-bottom:10px"><button class="btn pri" data-act="fb-csv" ${L.length ? "" : "disabled"}>Download CSV</button><button class="btn" data-act="fb-copy" ${L.length ? "" : "disabled"}>Copy all as text</button><button class="btn sm" data-act="refresh">Check again</button></div>
+      ${L.length ? `<div class="list">${L.map(one).join("")}</div>` : `<div class="empty">Nothing yet. The first /feedback from the team shows up here.</div>`}</div>
+    <div class="card"><h2>A copy in your Google Sheet and inbox</h2>
+      <p class="small muted">${hook ? `<b>Connected.</b> Each new response is also appended to the sheet "LEAD feedback" in your Drive and emailed to you.` : `<b>Not connected yet.</b> Once set up, each new response is also appended to a sheet in your Drive and emailed to you, without anyone else's involvement.`}
+        It runs as a small Google Apps Script in your own Google account (free, nothing outside Google), so it takes a one-time five-minute set-up by you:</p>
+      <ol class="small" style="margin:0 0 10px 18px;line-height:1.6"><li>Open <a href="https://script.google.com/home/projects/create" target="_blank" rel="noopener">script.google.com → New project</a>, name it <i>LEAD feedback hook</i>.</li>
+        <li>Replace everything in the editor with the script below (Copy the script), then save.</li>
+        <li>Deploy → New deployment → gear → <b>Web app</b> → Execute as <b>Me</b> · Who has access <b>Anyone</b> → Deploy → allow access (Advanced → Go to LEAD feedback hook → Allow).</li>
+        <li>Copy the Web app URL (ends in <code>/exec</code>), paste it here, Save, then press <b>Send a test</b> and check your inbox.</li></ol>
+      <details style="margin-bottom:12px"><summary class="small" style="cursor:pointer">The script to paste</summary><textarea readonly rows="10" style="margin-top:8px;font:12px/1.4 ui-monospace,Menlo,monospace;min-height:160px">${esc(FB_HOOK_SCRIPT)}</textarea><div class="row" style="margin-top:6px"><button class="btn sm" data-act="fb-script-copy">Copy the script</button></div></details>
+      <label class="f" for="fbHook">Web app URL</label><input type="url" id="fbHook" autocomplete="off" placeholder="https://script.google.com/macros/s/…/exec" value="${esc(hook || "")}">
+      <div class="row" style="margin-top:8px;gap:8px;flex-wrap:wrap"><button class="btn pri" data-act="fb-hook-save">Save</button>${hook ? `<button class="btn" data-act="fb-hook-test">Send a test</button><button class="btn" data-act="fb-hook-all" ${L.length ? "" : "disabled"}>Send all ${L.length} to the sheet now</button><button class="btn warn" data-act="fb-hook-off">Disconnect</button>` : ""}</div></div>`;
+}
 async function runOps(ops, what) {
   const bar = $("#bar"); if (bar) { bar.hidden = false; bar.firstElementChild.style.width = "0"; }
   await FBX.writeMany(ops, (i, n) => { if (bar) bar.firstElementChild.style.width = Math.round(i / n * 100) + "%"; });
@@ -438,6 +525,33 @@ const ACTIONS = {
     if (!(j && j.v === 1 && CENTERS.some(c => c.id === j.center) && j.salt && j.iv && j.ct)) return toast("That line is missing pieces. Make it again with make_codes.py.");
     await FBX.setRaw("codes", j.center, { ...j, by: me.email, at: FBX.stamp() });
     $("#codesBox").value = ""; toast(`Codes saved for ${centerName(j.center)}`); await refresh();
+  },
+  async "fb-csv"() {
+    const blob = new Blob(["\ufeff" + fbCsv()], { type: "text/csv;charset=utf-8" }), a = document.createElement("a");
+    a.href = URL.createObjectURL(blob); a.download = `LEAD feedback ${new Date().toISOString().slice(0, 10)}.csv`; document.body.appendChild(a); a.click();
+    setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500); toast("CSV downloaded");
+  },
+  async "fb-copy"() { try { await navigator.clipboard.writeText(fbText()); toast("Copied every response"); } catch (e) { toast("Couldn't copy: " + ((e && e.message) || e)); } },
+  async "fb-script-copy"() { try { await navigator.clipboard.writeText(FB_HOOK_SCRIPT); toast("Script copied. Paste it into the Apps Script editor."); } catch (e) { toast("Couldn't copy: " + ((e && e.message) || e)); } },
+  async "fb-hook-save"() {
+    const url = $("#fbHook").value.trim();
+    if (!FB_HOOK_RE.test(url)) return toast("That doesn't look like an Apps Script web app URL (https://script.google.com/macros/s/…/exec).");
+    await FBX.setRaw("system", "feedbackHook", { url, by: me.email, at: FBX.stamp() }); toast("Saved. Press “Send a test” to check your inbox."); await refresh();
+  },
+  async "fb-hook-off"() {
+    if (!confirm("Disconnect the copy to your sheet and inbox? Responses stay in the team database either way.")) return;
+    await FBX.delRaw("system", "feedbackHook"); toast("Disconnected"); await refresh();
+  },
+  async "fb-hook-test"() {
+    const url = S.fbHook && S.fbHook.url; if (!url) return;
+    try { await fbPost(url, fbRow({ kind: "demo", name: me.displayName || me.email, role: "asst", center: "east-hartford", by: me.email, at: new Date(), answers: { device: ["Laptop or desktop"], signin: "5", best: "A test from the owner page: if this reached your inbox and the sheet, the copy works.", overall: "5" } }, true));
+      toast("Test sent. Check your inbox (and the sheet \"LEAD feedback\" in Drive) in a minute."); } catch (e) { toast("Couldn't reach the hook: " + ((e && e.message) || e)); }
+  },
+  async "fb-hook-all"() {
+    const url = S.fbHook && S.fbHook.url, L = [...(S.feedback || [])].reverse(); if (!url || !L.length) return;
+    if (!confirm(`Send all ${L.length} responses to the sheet now? You'll also get ${L.length} emails.`)) return;
+    let n = 0; for (const r of L) { try { await fbPost(url, fbRow(r)); n++; } catch (e) {} await new Promise(res => setTimeout(res, 350)); }
+    toast(`${n} of ${L.length} sent`);
   },
   async "ai-save"() {
     const key = $("#aiKey").value.trim();

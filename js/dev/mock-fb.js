@@ -259,5 +259,6 @@ export async function listRoster() { live(); return [...col("roster")].map(([id,
 export async function logActivity(d) { const w = live(); if (!d.text || d.text.length > 300) throw err("an activity line is 1 to 300 characters", "invalid-argument"); col("activity").set(tid("a"), { ...clone(d), by: w.email, at: Date.now() }); changed("activity"); }
 export const watchActivity = (cb, onErr) => watchCol("activity", () => true, L => cb(L.sort((a, b) => b.at - a.at).slice(0, 40)), onErr, live);
 export async function getAI() { live(); return clone(col("system").get("ai")) || null; }
+export async function getFeedbackHook() { live(); return clone(col("system").get("feedbackHook")) || null; }
 // Demo codes (door 0000, Wi-Fi demo-wifi, laptop demo-laptop, cart demo-cart), scrambled with the team password.
 const MOCK_CODES = {"v": 1, "center": "east-hartford", "salt": "BFQZke1Av9RcsZo/cPALhg==", "iv": "+GKM0Y0td+pIVvEz", "ct": "MTFYP9P5TgmOjZ1T6eunxyr03picss7AMJJQxxY7JLm5EPKBSdR8MUD1U3auooTvLsvdgeOjnMWSuW2HKrOs1YiTwRnODMW5dYNAmLEAiyGqSOq81Q9flpuu42om+iHz", "it": 600000, "fields": ["door", "wifi", "mac", "cart"], "at": "2026-11-09"};

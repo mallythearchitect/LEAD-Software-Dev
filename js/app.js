@@ -3307,7 +3307,10 @@ function tmRepaint(){if(TM.ready&&["home","resources","org"].includes(S.tab)){if
   try{x.watchDirectory(L=>{TM.directory=L.filter(p=>p.id!==tmMe());tmRepaint();});}catch(e){console.warn("[hub] team list",e);}
   try{x.watchInbox(L=>{TM.inbox=L;tmAskPaint();});}catch(e){console.warn("[hub] messages",e);}
   try{x.watchSent(L=>{TM.sent=L;tmAskPaint();});}catch(e){console.warn("[hub] messages",e);}
-  if(x.watchFeedback){try{x.watchFeedback(L=>{TM.feedback=L;tmRepaint();});}catch(e){console.warn("[hub] feedback",e);}}
+  if(x.watchFeedback){try{x.watchFeedback(L=>{const had=TM.feedback||[];TM.feedback=L;
+    if(TM.fbLoaded){const s=tmFbSeen();L.filter(r=>(r.at||0)>s&&!had.some(h=>h.id===r.id)).forEach(r=>toast(`New feedback from ${r.name||"a teammate"} (${r.kind==="demo"?"software demo":"training"})`));}
+    TM.fbLoaded=true;tmRepaint();});}catch(e){console.warn("[hub] feedback",e);}}
+  if(x.getFeedbackHook){try{x.getFeedbackHook().then(h=>{TM.fbHook=(h&&h.url)||"";}).catch(()=>{TM.fbHook="";});}catch(e){TM.fbHook="";}}
   try{x.watchActivity(L=>{TM.activity=L;tmAskPaint();});}catch(e){console.warn("[hub] activity",e);}
   try{x.joinDirectory().catch(e=>console.warn("[hub] team list entry",e&&e.code||e));}catch(e){}
   // a quiet heartbeat while the tab is open, so teammates can see who's active (like a green dot)
@@ -3713,6 +3716,8 @@ function tmBind(v){
     else if(a==="drive-edit")tmDriveForm();
     else if(a==="my-task")taskForm(null,{section:"My role",status:"todo"});
     else if(a==="feedback")tmFeedback();
+    else if(a==="fb-csv")tmFbDownload();
+    else if(a==="fb-copy")copyText(tmFbText(),"Copied every response");
     else if(a==="codes-open")tmCodesOpen(tmCalCenter());
     else if(a==="codes-hide"){S.cal.codes=null;render();}
     else if(a==="copy")copyText(b.dataset.v,"Copied");
@@ -4044,33 +4049,7 @@ rProposal=function(p){const s=propScore(p),r=p.r||{},f=p.flags||{},tg=p.tags||{}
   </div>`;};
 
 /* ---------- feedback: training sessions and the software demo ---------- */
-const TM_FEEDBACK={
-  training:{title:"Training feedback",blurb:"About a presentation or training session (about 40 minutes).",qs:[
-    {k:"session",t:"text",q:"Which session or presentation?",ph:"Topic or date"},
-    {k:"overall",t:"scale",q:"Overall, how useful was it?",lo:"Not useful",hi:"Very useful"},
-    {k:"clear",t:"scale",q:"How clear was it?",lo:"Confusing",hi:"Very clear"},
-    {k:"pace",t:"one",q:"The pace was…",o:["Too slow","About right","Too fast"]},
-    {k:"length",t:"one",q:"The length was…",o:["Too short","About right","Too long"]},
-    {k:"useful",t:"long",q:"What was the most useful part?"},
-    {k:"confusing",t:"long",q:"What was confusing, or what would you change?"},
-    {k:"ready",t:"scale",q:"How ready do you feel to use what was covered?",lo:"Not ready",hi:"Ready now"},
-    {k:"next",t:"long",q:"What should the next session cover?"},
-    {k:"else",t:"long",q:"Anything else?"}]},
-  demo:{title:"Software demo feedback",blurb:"About trying LEAD (this app) this week. The more specific, the better.",qs:[
-    {k:"device",t:"many",q:"What did you use it on?",o:["Phone","Laptop or desktop","Tablet"]},
-    {k:"signin",t:"scale",q:"How easy was it to get in (team password, then Google)?",lo:"Hard",hi:"Easy"},
-    {k:"find",t:"scale",q:"How easy was it to find things?",lo:"Hard",hi:"Easy"},
-    {k:"pages",t:"many",q:"Which parts did you actually use?",o:["Home","Today","Events","Canvass","Meetings","Tasks / board","Calendar","Tools & resources","Ask LEAD"]},
-    {k:"best",t:"long",q:"What was the most useful part, and why?"},
-    {k:"worst",t:"long",q:"What was confusing, slow or in the way?"},
-    {k:"problems",t:"many",q:"Did you hit any of these?",o:["Slow to load","Something broke or showed an error","Hard to read on my screen","Couldn't find my center's data","Worked fine"]},
-    {k:"missing",t:"long",q:"What's missing that you need for your work?"},
-    {k:"daily",t:"one",q:"Would you use this most days?",o:["Yes","Maybe","No"]},
-    {k:"more",t:"long",q:"What would make you use it more?"},
-    {k:"speed",t:"scale",q:"Compared with how you work now, this feels…",lo:"Slower",hi:"Faster"},
-    {k:"overall",t:"scale",q:"Overall rating",lo:"1",hi:"5"},
-    {k:"else",t:"long",q:"Anything else? Ideas welcome."}]}
-};
+const TM_FEEDBACK=(FB&&FB.x&&FB.x.feedbackForms)||{};
 function tmFeedback(kind){
   if(!kind){
     openSheet("Feedback",`<p class="muted small" style="margin:0">Two or three minutes. Only coordinators, executives and the hub's owner can read responses.</p><div class="fb-pick"><button data-fb="training"><b>Training</b><small>About a presentation or training session</small></button><button data-fb="demo"><b>Software demo</b><small>About trying the LEAD app this week</small></button></div>`);
@@ -4092,7 +4071,7 @@ function tmFeedback(kind){
     if(!Object.keys(answers).length){toast("Answer at least one question");return;}
     const x=tmX();if(!x){toast("Feedback is saved on the team site.");return;}
     const b=$("#fbSend");b.disabled=true;b.textContent="Sending…";
-    try{await x.sendFeedback({kind,name,answers});closeOverlay();toast("Thank you. Your feedback is in.");tmSay("bot","Thanks, your feedback went through.");tmLog("feedback",`sent ${kind==="demo"?"software demo":"training"} feedback`);}
+    try{await x.sendFeedback({kind,name,answers});tmFbCopyOut(kind,name,answers);closeOverlay();toast("Thank you. Your feedback is in.");tmSay("bot","Thanks, your feedback went through.");tmLog("feedback",`sent ${kind==="demo"?"software demo":"training"} feedback`);}
     catch(e){b.disabled=false;b.textContent="Send feedback";toast("Couldn't send: "+((e&&e.code)==="permission-denied"?"the database isn't set up for feedback yet.":(e&&e.message)||e));}
   };
 }
@@ -4105,8 +4084,27 @@ function tmFeedbackList(){
   const one=r=>{const F=TM_FEEDBACK[r.kind]||{qs:[]},A=r.answers||{};
     return `<details class="fb-r"><summary><b>${esc(r.name||r.by||"")}</b><span class="pill ${r.kind==="demo"?"blue":"sand"}">${r.kind==="demo"?"Demo":"Training"}</span><span class="muted small">${esc([TM_ROLE_LABEL[r.role]||"",r.center?tmCenterName(r.center):"",when(r.at)].filter(Boolean).join(" · "))}</span></summary>
       <dl>${F.qs.filter(q=>A[q.k]!==undefined).map(q=>`<dt>${esc(q.q)}</dt><dd>${esc(Array.isArray(A[q.k])?A[q.k].join(", "):A[q.k])}</dd>`).join("")}</dl></details>`;};
-  return `<section class="sec"><div class="h"><h2>Feedback</h2><span class="meta">${L.length} response${L.length===1?"":"s"} · coordinators and up can see this</span></div>${avg("demo")}${avg("training")}${L.slice(0,40).map(one).join("")||`<p class="empty">Nothing yet. Responses from /feedback show up here.</p>`}</section>`;
+  setTimeout(tmFbMarkSeen,0);return `<section class="sec" id="fbList"><div class="h"><h2>Feedback</h2><span class="meta">${L.length} response${L.length===1?"":"s"}${tmFbUnread()?` · <b>${tmFbUnread()} new</b>`:""} · coordinators and up can see this</span><span class="sp"></span>${L.length?`<button class="btn sm" data-tm="fb-csv">Download CSV</button><button class="btn sm ghost" data-tm="fb-copy">Copy as text</button>`:""}</div>${avg("demo")}${avg("training")}${L.slice(0,40).map(one).join("")||`<p class="empty">Nothing yet. Responses from /feedback show up here.</p>`}</section>`;
 }
+
+/* a response as one flat row: the form's questions in order, blanks for skipped ones (CSV, text, the copy out) */
+function tmFbRow(r){const F=TM_FEEDBACK[r.kind]||{title:r.kind,qs:[]},A=r.answers||{};
+  return {kind:r.kind,title:F.title,name:r.name||"",role:TM_ROLE_LABEL[r.role]||r.role||"",center:r.center?tmCenterName(r.center):"",by:r.by||"",at:r.at?new Date(r.at).toISOString():"",
+    answers:F.qs.map(q=>({q:q.q,a:Array.isArray(A[q.k])?A[q.k].join(", "):(A[q.k]==null?"":String(A[q.k]))}))};}
+function tmFbCsv(){const L=[...(TM.feedback||[])].sort((a,b)=>(a.at||0)-(b.at||0)),cell=v=>`"${String(v==null?"":v).replace(/"/g,'""')}"`,out=[];
+  for(const kind of Object.keys(TM_FEEDBACK)){const R=L.filter(r=>r.kind===kind);if(!R.length)continue;const F=TM_FEEDBACK[kind];
+    out.push([F.title].map(cell).join(","));out.push(["When","Name","Level","Center","Signed in as",...F.qs.map(q=>q.q)].map(cell).join(","));
+    R.forEach(r=>{const w=tmFbRow(r);out.push([w.at,w.name,w.role,w.center,w.by,...w.answers.map(a=>a.a)].map(cell).join(","));});out.push("");}
+  return out.join("\r\n");}
+function tmFbText(){return [...(TM.feedback||[])].sort((a,b)=>(b.at||0)-(a.at||0)).map(r=>{const w=tmFbRow(r);
+  return `${w.title} · ${w.name}${w.role?" · "+w.role:""}${w.center?" · "+w.center:""}${w.at?" · "+new Date(w.at).toLocaleString():""}\n`+w.answers.filter(a=>a.a).map(a=>`  ${a.q}\n    ${a.a}`).join("\n");}).join("\n\n");}
+function tmFbDownload(){const blob=new Blob(["\ufeff"+tmFbCsv()],{type:"text/csv;charset=utf-8"}),a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=`LEAD feedback ${todayISO()}.csv`;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},500);toast("CSV downloaded");}
+/* a copy of each response goes out to the owner's hook (a Google Apps Script: sheet + email), if one is set */
+async function tmFbCopyOut(kind,name,answers){try{const x=tmX();if(!x)return;let url=TM.fbHook;
+  if(url===undefined&&x.getFeedbackHook){const h=await x.getFeedbackHook();url=TM.fbHook=(h&&h.url)||"";}
+  if(!url)return;const w=tmFbRow({kind,name,answers,role:FB&&FB.role,center:FB&&FB.center,by:tmMe(),at:Date.now()});
+  await fetch(url,{method:"POST",mode:"no-cors",keepalive:true,headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify(w)});}
+  catch(e){console.warn("[hub] feedback copy",e);}}
 
 /* ---------- the assistant in the corner ---------- */
 const TM_QUICK=[["next","When's the next meeting?"],["today","What's on today?"],["whoin","Who's in the office?"],["sigs","How many signatures?"],["feedback","Give feedback"],["msg-coord","Message a coordinator"],["msg-exec","Message an executive"],["msg-any","Message a teammate"],["search","Search the hub"]];
@@ -4122,7 +4120,15 @@ function tmAskMount(){
   tmAskPaint();
 }
 function tmAskToggle(on){TM.askOpen=on===undefined?!TM.askOpen:on;const p=$("#askPanel"),b=$("#askBtn");if(!p)return;p.hidden=!TM.askOpen;b.setAttribute("aria-expanded",String(TM.askOpen));document.documentElement.classList.toggle("ask-on",TM.askOpen);if(TM.askOpen){tmAskPaint();const i=$("#askIn");if(i)i.focus({preventScroll:true});}}
-const tmUnread=()=>TM.inbox.filter(m=>!m.read).length;
+const tmUnread=()=>TM.inbox.filter(m=>!m.read).length+tmFbUnread();
+function tmFbSeen(){try{return +localStorage.getItem("lead_fb_seen")||0;}catch(e){return 0;}}
+function tmFbMarkSeen(){try{const m=Math.max(0,...(TM.feedback||[]).map(r=>r.at||0));if(m>tmFbSeen())localStorage.setItem("lead_fb_seen",String(m));}catch(e){}}
+function tmFbUnread(){const x=tmX();if(!x||!x.watchFeedback)return 0;const s=tmFbSeen();return (TM.feedback||[]).filter(r=>(r.at||0)>s).length;}
+function tmFbOpen(){go("home");S.home.tab="tools";if(typeof homeSave==="function")homeSave();render();setTimeout(()=>{const el=$("#fbList");if(el)el.scrollIntoView({behavior:"smooth",block:"start"});},60);}
+function tmAskFb(){const x=tmX();if(!x||!x.watchFeedback||!(TM.feedback||[]).length)return "";const s=tmFbSeen();
+  const when=t=>{if(!t)return "";const d=new Date(t);return d.toLocaleDateString([],{month:"short",day:"numeric"})+" "+d.toLocaleTimeString([],{hour:"numeric",minute:"2-digit"});};
+  return [...TM.feedback].sort((a,b)=>(b.at||0)-(a.at||0)).slice(0,8).map(r=>{const F=TM_FEEDBACK[r.kind]||{qs:[]},A=r.answers||{};const first=F.qs.find(q=>q.t==="long"&&A[q.k]);
+    return `<div class="ask-msg fb ${(r.at||0)>s?"new":""}"><div class="w">Feedback from <b>${esc(r.name||r.by||"")}</b> · ${r.kind==="demo"?"Software demo":"Training"} · ${esc(when(r.at))}</div><div class="t">${first?esc(String(A[first.k]).slice(0,180)):"Ratings and choices only"}</div><button class="linkbtn" data-ask-go="fb">Read all responses</button></div>`;}).join("");}
 function tmAskPaint(){
   const n=$("#askN");if(n){const u=tmUnread();n.hidden=!u;n.textContent=u;}
   const p=$("#askPanel");if(!p||p.hidden)return;
@@ -4143,10 +4149,10 @@ function tmAskPaint(){
   p.querySelector("[data-ask-close]").onclick=()=>tmAskToggle(false);
   p.querySelector("[data-ask-min]").onclick=()=>{TM.askMin=!TM.askMin;tmAskPaint();};
   p.querySelector(".ask-h").addEventListener("click",e=>{if(TM.askMin&&!e.target.closest("button")){TM.askMin=false;tmAskPaint();}});
-  p.querySelectorAll("[data-ask-tab]").forEach(x=>x.onclick=()=>{TM.askTab=x.dataset.askTab;tmAskPaint();if(TM.askTab==="msgs")tmMarkRead();});
+  p.querySelectorAll("[data-ask-tab]").forEach(x=>x.onclick=()=>{TM.askTab=x.dataset.askTab;tmAskPaint();if(TM.askTab==="msgs"){tmMarkRead();tmFbMarkSeen();tmAskPaint();}});
   p.querySelectorAll("[data-ask-q]").forEach(x=>x.onclick=()=>tmAskQuick(x.dataset.askQ));
   p.querySelectorAll("[data-ask-ci]").forEach(x=>x.onclick=()=>tmCheckIn(x.dataset.askCi==="1"));
-  p.querySelectorAll("[data-ask-go]").forEach(x=>x.onclick=()=>{tmAskToggle(false);const id=x.dataset.askGo;if(id.startsWith("tab:"))go(id.slice(4));else openHit(id);});
+  p.querySelectorAll("[data-ask-go]").forEach(x=>x.onclick=()=>{tmAskToggle(false);const id=x.dataset.askGo;if(id==="fb")return tmFbOpen();if(id.startsWith("tab:"))go(id.slice(4));else openHit(id);});
   p.querySelectorAll("[data-ask-to]").forEach(x=>x.onclick=()=>{const q=TM.directory.find(d=>d.id===x.dataset.askTo);if(q){TM.to=q;TM.askTab="ask";tmSay("bot",`Writing to <b>${esc(q.name)}</b>. Type your message and press Send.`);}});
   p.querySelectorAll("[data-ask-reply]").forEach(x=>x.onclick=()=>{const m=TM.inbox.find(y=>y.id===x.dataset.askReply);if(m){TM.to={id:m.from,name:m.fromName||m.from};TM.askTab="ask";tmAskPaint();}});
   const c=p.querySelector("[data-ask-cancel]");if(c)c.onclick=()=>{TM.to=null;tmAskPaint();};
@@ -4156,7 +4162,7 @@ function tmSay(who,html){TM.thread.push({who,html});if(TM.thread.length>60)TM.th
 function tmAskMsgs(){
   const all=TM.inbox.map(m=>({...m,_in:true})).concat(TM.sent.map(m=>({...m,_in:false}))).sort((a,b)=>(b.at||0)-(a.at||0)).slice(0,40);
   const when=t=>{if(!t)return "";const d=new Date(t);return d.toLocaleDateString([],{month:"short",day:"numeric"})+" "+d.toLocaleTimeString([],{hour:"numeric",minute:"2-digit"});};
-  return `<div class="ask-log ask-inbox">${all.map(m=>`<div class="ask-msg ${m._in?"in":"out"} ${m._in&&!m.read?"new":""}"><div class="w">${m._in?"From <b>"+esc(m.fromName||m.from)+"</b>":"To <b>"+esc(m.toName||m.to)+"</b>"} · ${esc(when(m.at))}</div><div class="t">${esc(m.text)}</div>${m._in?`<button class="linkbtn" data-ask-reply="${esc(m.id)}">Reply</button>`:""}</div>`).join("")||`<p class="muted small" style="padding:10px">No messages yet. Messages you send and get show here.</p>`}</div>
+  return `<div class="ask-log ask-inbox">${tmAskFb()}${all.map(m=>`<div class="ask-msg ${m._in?"in":"out"} ${m._in&&!m.read?"new":""}"><div class="w">${m._in?"From <b>"+esc(m.fromName||m.from)+"</b>":"To <b>"+esc(m.toName||m.to)+"</b>"} · ${esc(when(m.at))}</div><div class="t">${esc(m.text)}</div>${m._in?`<button class="linkbtn" data-ask-reply="${esc(m.id)}">Reply</button>`:""}</div>`).join("")||`<p class="muted small" style="padding:10px">No messages yet. Messages you send and get show here.</p>`}</div>
     <div class="ask-quick">${["msg-coord","msg-exec","msg-any"].map(k=>`<button data-ask-q="${k}">${esc(TM_QUICK.find(q=>q[0]===k)[1])}</button>`).join("")}</div>`;
 }
 function tmAskActivity(){

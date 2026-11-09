@@ -134,3 +134,4 @@ export const listRoster = () => listCol("roster");
 export const logActivity = d => fs.addDoc(fs.collection(db, "activity"), { ...d, by: meEmail(), at: fs.serverTimestamp() });
 export const watchActivity = (cb, onErr) => watch(fs.query(fs.collection(db, "activity"), fs.orderBy("at", "desc"), fs.limit(40)), cb, onErr);
 export async function getAI() { return data(await fs.getDoc(ref("system", "ai"))); }
+export async function getFeedbackHook() { return data(await fs.getDoc(ref("system", "feedbackHook"))); }

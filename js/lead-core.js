@@ -52,6 +52,35 @@ export const WORK = ["tasks", "due", "ready", "proposals", "meetings"];
 export const OWNED = ["shifts", "signers"];           // a trial sees only the ones they logged
 export const LEADS_ONLY = ["meta", "cv"];             // goals and settings: coordinators, executives, the owner
 export const RESERVED = ["access", "system", "roster", "requests", "ref", "presence", "directory", "messages", "feedback", "codes", "activity"];
+// The two feedback forms (Ask LEAD → /feedback). The hub renders them; the owner page labels the CSV with them.
+export const FEEDBACK_FORMS = {
+  training:{title:"Training feedback",blurb:"About a presentation or training session (about 40 minutes).",qs:[
+    {k:"session",t:"text",q:"Which session or presentation?",ph:"Topic or date"},
+    {k:"overall",t:"scale",q:"Overall, how useful was it?",lo:"Not useful",hi:"Very useful"},
+    {k:"clear",t:"scale",q:"How clear was it?",lo:"Confusing",hi:"Very clear"},
+    {k:"pace",t:"one",q:"The pace was…",o:["Too slow","About right","Too fast"]},
+    {k:"length",t:"one",q:"The length was…",o:["Too short","About right","Too long"]},
+    {k:"useful",t:"long",q:"What was the most useful part?"},
+    {k:"confusing",t:"long",q:"What was confusing, or what would you change?"},
+    {k:"ready",t:"scale",q:"How ready do you feel to use what was covered?",lo:"Not ready",hi:"Ready now"},
+    {k:"next",t:"long",q:"What should the next session cover?"},
+    {k:"else",t:"long",q:"Anything else?"}]},
+  demo:{title:"Software demo feedback",blurb:"About trying LEAD (this app) this week. The more specific, the better.",qs:[
+    {k:"device",t:"many",q:"What did you use it on?",o:["Phone","Laptop or desktop","Tablet"]},
+    {k:"signin",t:"scale",q:"How easy was it to get in (team password, then Google)?",lo:"Hard",hi:"Easy"},
+    {k:"find",t:"scale",q:"How easy was it to find things?",lo:"Hard",hi:"Easy"},
+    {k:"pages",t:"many",q:"Which parts did you actually use?",o:["Home","Today","Events","Canvass","Meetings","Tasks / board","Calendar","Tools & resources","Ask LEAD"]},
+    {k:"best",t:"long",q:"What was the most useful part, and why?"},
+    {k:"worst",t:"long",q:"What was confusing, slow or in the way?"},
+    {k:"problems",t:"many",q:"Did you hit any of these?",o:["Slow to load","Something broke or showed an error","Hard to read on my screen","Couldn't find my center's data","Worked fine"]},
+    {k:"missing",t:"long",q:"What's missing that you need for your work?"},
+    {k:"daily",t:"one",q:"Would you use this most days?",o:["Yes","Maybe","No"]},
+    {k:"more",t:"long",q:"What would make you use it more?"},
+    {k:"speed",t:"scale",q:"Compared with how you work now, this feels…",lo:"Slower",hi:"Faster"},
+    {k:"overall",t:"scale",q:"Overall rating",lo:"1",hi:"5"},
+    {k:"else",t:"long",q:"Anything else? Ideas welcome."}]}
+};
+
 export const PERSONAL = "ptasks";                     // everyone's own "My role" tasks
 export const PERSONAL_HOURS = "phours";               // everyone's own hours (the owner's stay in hours)
 export const PRIVATE_SETTINGS = ["rate", "invoicedThrough", "nextInvoiceNo"];
