@@ -194,7 +194,8 @@ function tmTodayPanel(){
     cards.push(tmMetric({l:"Meetings today",v:mt.length,s:mt.length?esc(mt.slice(0,2).map(m=>(m.time?tmClock(m.time)+" ":"")+(m.title||"Meeting")).join(" · ")):"Nothing on the calendar",act:"mtg-today",tc:"orange"}));
   }
   if(tabOK("events")){const ne=tmNextEvent();const d=ne?parseISO(ne.date):null;
-    cards.push(tmMetric({l:"Next event",v:ne?esc(daysFromToday(ne.date)===0?"Today":daysFromToday(ne.date)===1?"Tomorrow":MON[d.getMonth()]+" "+d.getDate()):"—",s:ne?esc((ne.name||"Event")+(ne.time?" · "+ne.time:"")+" · "+townOf(ne)):"Nothing on the calendar yet",act:ne?"ev-next":"",go:ne?"":"events",tc:"gold"}));}
+    const dn=ne?daysFromToday(ne.date):null;
+    cards.push(tmMetric({l:dn!==null&&dn<0?"Happening now":"Next event",v:ne?esc(dn<=0?"Today":dn===1?"Tomorrow":MON[d.getMonth()]+" "+d.getDate()):"—",s:ne?esc((ne.name||"Event")+(ne.time?" · "+ne.time:"")+" · "+townOf(ne)+(dn<0&&ne.end_date?" · through "+fmtDate(ne.end_date):"")):"Nothing on the calendar yet",act:ne?"ev-next":"",go:ne?"":"events",tc:"gold"}));}
   cards.push(tmMetric({l:"Programs today",v:pr.length,s:pr.length?esc(pr.slice(0,3).map(p=>p.n+(p.t?" ("+p.t+")":"")).join(" · ")):"No classes or center programs today",go:tabOK("programs")?"programs":tabOK("center")?"center":"",tc:"green"}));
   cards.push(tmMetric({l:"In the office",v:tmX()?inn.length:"—",s:tmX()?(inn.length?esc(inn.slice(0,4).map(p=>(p.name||"").split(/\s+/)[0]).join(", "))+(inn.length>4?` +${inn.length-4}`:""):"Nobody checked in yet")+` · <u>${tmAmIn()?"Check out":"I'm in today"}</u>`:"Check-ins work on the team site",act:tmX()?(tmAmIn()?"out":"in"):"",tc:"gold"}));
   let byc="";

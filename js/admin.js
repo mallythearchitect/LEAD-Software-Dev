@@ -292,7 +292,7 @@ function paneData() {
         : '<div class="empty">Nothing loaded yet. Start with the demo data so everyone has something to look at.</div>'}
       ${demo ? "" : `<button class="btn pri" data-act="demo-load" style="margin-top:12px">Load the demo data (made up, all 7 centers)</button>`}
       ${(() => { const have = new Set(Object.values(S.index.sets || {}).map(x => x.center)); const empty = CENTERS.filter(c => !have.has(c.id)); const others = gs.some(g => g.label === DEMO_OTHERS_LABEL);
-        return empty.length && !others ? `<button class="btn" data-act="demo-others" style="margin-top:12px">Load demo data for the ${empty.length} center${empty.length === 1 ? "" : "s"} without data (${empty.map(centerName).join(", ")})</button>` : ""; })()}
+        return empty.length && !others ? `<button class="btn" data-act="demo-others" style="margin-top:12px">Load demo data for the ${empty.length} center${empty.length === 1 ? "" : "s"} without data (${empty.map(c => c.name).join(", ")})</button>` : ""; })()}
       <div class="bar" id="bar" hidden><i></i></div></div>
     <div class="card"><h2>Load a data file</h2>
       <p class="small muted">For example <i>my-data-east-hartford.json</i> from the "Firebase import files" folder on your Desktop. Loading a file replaces the lists it carries for its centers.</p>
