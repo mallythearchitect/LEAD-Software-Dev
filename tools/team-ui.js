@@ -15,7 +15,7 @@
    No personal data in here: names, numbers and links come from the team database or are LEAD's public ones. */
 
 const TM_SECTIONS=[
-  {id:"events",name:"Events",tc:"gold",apps:["events","proposals"],blurb:"Where LEAD shows up, and getting ready for it"},
+  {id:"events",name:"Events",tc:"gold",apps:["events","approved","proposals"],blurb:"Where LEAD shows up, and getting ready for it"},
   {id:"programming",name:"Programming",tc:"green",apps:["programs","center"],blurb:"Classes, videos and the center calendar"},
   {id:"meetings",name:"Meetings",tc:"orange",apps:["meetings","tasks","board"],blurb:"What was decided and who does what"},
   {id:"canvassing",name:"Canvassing",tc:"blue",apps:["team","people","letters","map"],blurb:"Signatures, signers, shifts and supporters"}
@@ -46,6 +46,7 @@ const tmApps=ids=>ids.map(appById).filter(a=>a&&appOK(a));
   ROWS.length=0;
   ROWS.push(["campaign","Campaign"],...TM_SECTIONS.map(s=>[s.id,s.name]),["role","My role"],["tools","Tools & resources"],["runs","How LEAD runs"]);
   APPS.push({id:"resources",row:"tools",tc:"gold",desc:"Links, Drive folders, the Facebook and WhatsApp groups, the email signature and LEAD's contacts."});
+  APPS.push({id:"approved",row:"events",tc:"gold",desc:"Events LEAD said yes to that are coming up, each with its readiness checklist."});
   APPS.forEach(a=>{const s=sec[a.id];
     if(s){a.row=s.id;a.tc=s.tc;}
     else if(a.id==="today"){a.row="campaign";a.tc="blue";}
@@ -58,6 +59,8 @@ const tmApps=ids=>ids.map(appById).filter(a=>a&&appOK(a));
   if(d("log"))d("log").desc="Your own notes: what happened, what you learned, what's blocking.";
   if(d("org"))d("org").desc="The team by level and center, and who to ask for what.";
   TITLES.resources="Tools & resources";PAGE_CONTEXT.resources="Links, files & contacts";
+  TITLES.approved="Approved events";PAGE_CONTEXT.approved="Coming up, with readiness";
+  IC.approved='<path d="M4 7.5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/><path d="M4 10.5h16M8 3.5v4M16 3.5v4"/><path d="M9 15l2 2 4-4"/>';
   TITLES.playbook="Training";PAGE_CONTEXT.playbook="Training center";
   TITLES.log="Notes";PAGE_CONTEXT.log="Your notes";
   TITLES.center="Calendar";PAGE_CONTEXT.center="Programs, registration & codes";
@@ -72,6 +75,7 @@ const tmApps=ids=>ids.map(appById).filter(a=>a&&appOK(a));
   if(strip){
     const btn={};strip.querySelectorAll("[data-tab]").forEach(b=>{btn[b.dataset.tab]=b;});
     if(!btn.resources){const b=document.createElement("button");b.dataset.tab="resources";b.textContent="Tools & resources";b.addEventListener("click",()=>go("resources"));btn.resources=b;}
+    if(!btn.approved){const b=document.createElement("button");b.dataset.tab="approved";b.textContent="Approved events";b.addEventListener("click",()=>go("approved"));btn.approved=b;}
     ["playbook","log","center"].forEach(id=>{const b=btn[id];if(b&&b.firstChild&&b.firstChild.nodeType===3)b.firstChild.nodeValue=TITLES[id]+" ";});
     const groups=[["Campaign",["today"]],...TM_SECTIONS.map(s=>[s.name,s.apps]),["My role",TM_ROLE_APPS],["Tools & resources",["resources",...TM_TOOL_APPS]]];
     const frag=document.createDocumentFragment(),used=new Set();
@@ -101,6 +105,8 @@ function tmProgramsOn(d){
   S.sessions.filter(x=>x.date===d).forEach(x=>out.push({n:[x.program,x.topic].filter(Boolean).join(": ")||"Class",t:"",k:"Class"}));
   return out;
 }
+function tmNextEvent(){const t0=todayISO();return allE().filter(e=>e.date&&(e.date>=t0||(e.end_date&&e.end_date>=t0))).sort((a,b)=>(a.date+(tm24(a.time)||"99"))<(b.date+(tm24(b.time)||"99"))?-1:1)[0]||null;}
+const tmApproved=e=>{const a=assessOf(e);return !!((S.edits[e.id]||{}).approved||["GO","GO IF IT FITS"].includes(a.decision)||rdForEvent(e.id));};
 function tmSigsToday(){const t0=todayISO();return S.shifts.filter(x=>x.date===t0).reduce((a,x)=>a+(+x.sigs||0),0);}
 function tmSigsByCenter(){
   const m={},add=(c,n)=>{n=+n||0;if(!n)return;c=c||"";m[c]=(m[c]||0)+n;};
@@ -186,9 +192,9 @@ function tmTodayPanel(){
   cards.push(tmMetric({l:"Signatures so far",v:`${sg.all}<small> / ${goal}</small>`,s:`<span class="th-bar"><i style="width:${(pct*100).toFixed(1)}%"></i></span>${plus?`+${plus} logged today`:"as of today"}`,go:tabOK("team")?"team":"today",tc:"blue"}));
   if(tabOK("meetings")){
     cards.push(tmMetric({l:"Meetings today",v:mt.length,s:mt.length?esc(mt.slice(0,2).map(m=>(m.time?tmClock(m.time)+" ":"")+(m.title||"Meeting")).join(" · ")):"Nothing on the calendar",act:"mtg-today",tc:"orange"}));
-    const day=nx?tmWhen(nx.date,""):"";
-    cards.push(tmMetric({l:"Next meeting",v:nx?esc(nx.time?tmClock(nx.time):day):"—",s:nx?esc((nx.title||"Meeting")+(nx.time?" · "+day:"")):"None scheduled. Add one in Meetings.",act:nx?"mtg-next":"mtg-today",tc:"orange"}));
   }
+  if(tabOK("events")){const ne=tmNextEvent();const d=ne?parseISO(ne.date):null;
+    cards.push(tmMetric({l:"Next event",v:ne?esc(daysFromToday(ne.date)===0?"Today":daysFromToday(ne.date)===1?"Tomorrow":MON[d.getMonth()]+" "+d.getDate()):"—",s:ne?esc((ne.name||"Event")+(ne.time?" · "+ne.time:"")+" · "+townOf(ne)):"Nothing on the calendar yet",act:ne?"ev-next":"",go:ne?"":"events",tc:"gold"}));}
   cards.push(tmMetric({l:"Programs today",v:pr.length,s:pr.length?esc(pr.slice(0,3).map(p=>p.n+(p.t?" ("+p.t+")":"")).join(" · ")):"No classes or center programs today",go:tabOK("programs")?"programs":tabOK("center")?"center":"",tc:"green"}));
   cards.push(tmMetric({l:"In the office",v:tmX()?inn.length:"—",s:tmX()?(inn.length?esc(inn.slice(0,4).map(p=>(p.name||"").split(/\s+/)[0]).join(", "))+(inn.length>4?` +${inn.length-4}`:""):"Nobody checked in yet")+` · <u>${tmAmIn()?"Check out":"I'm in today"}</u>`:"Check-ins work on the team site",act:tmX()?(tmAmIn()?"out":"in"):"",tc:"gold"}));
   let byc="";
@@ -546,6 +552,9 @@ function tmBind(v){
     else if(a==="msg"){TM.to={id:b.dataset.id,name:b.dataset.name};TM.askTab="ask";tmAskToggle(true);tmSay("bot",`Writing to <b>${esc(b.dataset.name)}</b>. Type your message and press Send.`);}
     else if(a==="mtg")tmMeetingSheet(b.dataset.id);
     else if(a==="mtg-today")tmMeetingsTodaySheet();
+    else if(a==="ev-next"){const ne=tmNextEvent();if(ne)openDetail(ne.id);}
+    else if(a==="rd"){const id=b.dataset.id;const d=rdForEvent(id);if(d)rdOpen(d.id);else rdCreate(id);}
+    else if(a==="approve"){const id=b.dataset.id,on=b.dataset.on==="1";const ok=await saveEdit(id,{approved:!on});if(ok!==false){toast(on?"Taken off the approved list":"Approved");tmLog("event",(on?"took \"":"approved \"")+(getRec(id)||{}).name+"\""+(on?"\" off the approved list":""));}}
     else if(a==="mtg-next"){const nx=tmNextMeeting();if(nx)tmMeetingSheet(nx.id);}
     else if(a==="q-ask")tmAskQuestion(v);
     else if(a==="q-answer")tmAnswerQuestion(b.dataset.id);
@@ -585,6 +594,17 @@ rEvents=function(){
     <span class="sp"></span><span class="small muted">${E.length}</span>${tmLeadish()?`<button class="btn sm" data-act="report-sheet">Event report</button>`:""}</div>
   ${groups.map(g=>`<h3 class="ev-wk">${g.wk?"Week of "+esc(fmtDate(g.wk,true)):"No date yet"}</h3><div class="ev-grid">${g.L.map(tmEventTile).join("")}</div>`).join("")||`<p class="empty">No events match.</p>`}`;
 };
+
+/* ---------- Approved events: what LEAD said yes to, coming up, with readiness ---------- */
+function tmEventTileRd(e){const d=rdForEvent(e.id),sc=d?rdScore(d):null;
+  return tmEventTile(e).replace('<button class="ev-tile"','<div class="ev-tile has-acts"').replace(/<\/button>$/,'')+`<span class="ev-acts"><button class="btn sm ${sc?"":"pri"}" data-act="noop" data-tm="rd" data-id="${e.id}">${sc?`Readiness ${sc.pct}%`:"Start readiness"}</button>${sc&&sc.overdue?`<span class="pill red">${sc.overdue} overdue</span>`:""}${d&&d.submittedAt?`<span class="pill green">submitted</span>`:""}${tmLeadish()&&S.canWrite!==false?`<button class="btn sm ghost" data-act="noop" data-tm="approve" data-id="${e.id}" data-on="1">Unapprove</button>`:""}</span></div>`;}
+function rApproved(){
+  const t0=todayISO(),E=allE().filter(e=>e.date&&(e.date>=t0||(e.end_date&&e.end_date>=t0))).sort((a,b)=>(a.date||"9")<(b.date||"9")?-1:1);
+  const ok=E.filter(tmApproved),rest=E.filter(e=>!tmApproved(e)).slice(0,24);
+  return `<div class="toolrow"><span class="muted small">Events LEAD said yes to. Each one gets a readiness checklist; submit it to the coordinators when it's ready.</span><span class="sp"></span><span class="small muted">${ok.length}</span></div>
+  ${ok.length?`<div class="ev-grid" style="margin-top:12px">${ok.map(tmEventTileRd).join("")}</div>`:`<p class="empty">Nothing approved and coming up yet.${tmLeadish()?" Approve one below.":""}</p>`}
+  ${tmLeadish()&&rest.length?`<h3 class="ev-wk">Coming up, not approved yet</h3><div class="rows">${rest.map(e=>`<div class="row" data-open="${e.id}"><div><div class="n">${esc(e.name)}</div><div class="d">${esc([fmtDate(e.date),e.time,townOf(e)].filter(Boolean).join(" · "))}</div></div><div class="r">${S.canWrite===false?"":`<button class="btn sm" data-act="noop" data-tm="approve" data-id="${e.id}" data-on="0">Approve</button>`}</div></div>`).join("")}</div>`:""}`;
+}
 
 /* ---------- Meetings as tiles, opened in a clean sheet ---------- */
 function tmMeetingEmoji(m){const n=(m.title||"").toLowerCase();

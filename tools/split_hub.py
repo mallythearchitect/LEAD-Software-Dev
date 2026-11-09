@@ -196,7 +196,7 @@ TEAM_JS = open(os.path.join(repo, "tools", "team-ui.js"), encoding="utf-8").read
 app = app.replace(start_marker, FOOTER + "\n" + TEAM_JS + "\n" + start_marker)
 
 # 7. Hooks the team code needs: its own page in the page switch, and meeting times.
-patch("home:rHome,letters:rLetters})[S.tab]();", "home:rHome,letters:rLetters,resources:rResources})[S.tab]();")
+patch("home:rHome,letters:rLetters})[S.tab]();", "home:rHome,letters:rLetters,resources:rResources,approved:rApproved})[S.tab]();")
 patch('${fmtDate(m.date,true)}${m.with?", with "+esc(m.with):""}', '${fmtDate(m.date,true)}${m.time?" · "+esc(tmClock(m.time)):""}${m.with?", with "+esc(m.with):""}')
 patch('const mapsQ=encodeURIComponent((r.address||"")+(r.address&&!/CT/.test(r.address)?", "+townOf(r)+" CT":""));',
       'const mapsQ=encodeURIComponent([r.venue,r.address,(!r.address||!/\\bCT\\b/.test(r.address))?townOf(r)+" CT":""].filter(Boolean).join(", "));')

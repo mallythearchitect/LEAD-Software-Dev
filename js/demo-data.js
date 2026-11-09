@@ -86,6 +86,8 @@ export function demoBundle(today = new Date()) {
     const letters = Array.from({ length: 4 }, (_, i) => ({ id: `${p}-L${i + 1}`, name: `${city} ${pick(["Boys & Girls Club", "Faith Center", "Small Business Assoc.", "Parent Council"])} (demo)`, person: person(), role: "Director", lane: pick(["Education Services", "Faith", "Business", "Civic"]), town: city, zone: "", zone_label: "", address: addr(), email: `letters${i + 1}.${p}@example.org`, phone: phone(70 + i), website: "", instagram: "", facebook: "", linkedin: "", booking: "", hook: "Demo lead.", edu_tie: "", why_fit: "Serves families in the area.", gatekeeper: "low", storefront: r() > 0.5, hours: "", ages: "", owned_by: "", audience: "", source: "", verified: false, notes: "", added: "Demo", flag: "", priority: pick(["A", "B", "C"]), score: Math.round(r() * 20), email_subject: "A letter for local kids (demo)", email_body: "Hi,\n\nThis is a demo email.", call_script: "Demo call script.", dm_text: "Demo message." }));
     tiers.push({ tier: "contacts", center: c.id, data: { REF_TARGETS: targets, REF_BOARD: board, BL_leads: [], BL_patch: {}, LT_contacts: letters, CENTER: { acct0: `${p}-center@example.org`, acct1: `${p}-laptops@example.org` } } });
     put("edits", `${p}-t1`, { status: "Supporter", notes: "Said yes to a table at their next event (demo).", next_step: "Send the flyer", next_date: iso(addDays(today, 4)), center: c.id });
+    put("edits", `${p}-e1`, { approved: true, center: c.id });
+    put("edits", `${p}-e2`, { approved: true, assess: { q1: 2, q2: 2, q3: 1, q4: 2, q5: 2 }, center: c.id });
     put("edits", `${p}-t2`, { status: "Contacted", notes: "", next_step: "Call back", next_date: iso(addDays(today, 6)), center: c.id });
 
     // work
