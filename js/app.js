@@ -278,7 +278,7 @@ function rToday(){
 /* ---------- Tasks ---------- */
 function taskSort(a,b){const da=taskDue(a).date||"9999",db=taskDue(b).date||"9999";if(da!==db)return da<db?-1:1;const p={High:0,Medium:1,Low:2};return (p[a.priority]??1)-(p[b.priority]??1);}
 function rTasks(){
-  const v=S.tv;let html=`<div class="toolrow"><div class="tviews">${[["list","List"],["board","Board"],["cal","Calendar"]].map(([k,l])=>`<button data-tv="${k}" aria-pressed="${v===k}">${l}</button>`).join("")}</div>
+  const v=S.tv;let html=`<div class="toolrow"><div class="tviews">${[["board","Board"],["list","List"],["cal","Calendar"]].map(([k,l])=>`<button data-tv="${k}" aria-pressed="${v===k}">${l}</button>`).join("")}</div>
     ${v!=="cal"?`<select data-tsec><option value="">All sections</option>${TSECTIONS.map(x=>`<option ${S.tSec===x?"selected":""}>${x}</option>`).join("")}</select><button class="chip" data-act="t-done-toggle" aria-pressed="${S.tDone}">Show done</button>`:""}
     <span class="sp"></span><span class="small muted">${S.tasks.filter(t=>t.status!=="done").length} open</span></div>
   <form class="capture" id="capture"><input name="t" placeholder="Add a task and press Enter. Type a date like 10/20 at the end to set it due." autocomplete="off"><select name="sec">${TSECTIONS.map(x=>`<option ${S.tSec===x?"selected":""}>${x}</option>`).join("")}</select></form>`;
@@ -532,8 +532,7 @@ function rBoard(){
   const inv=REF.BOARD.invite,fly=REF.BOARD.flyer;const cats=[...new Set(inv.map(r=>r.category))];const fcats=[...new Set(fly.map(r=>r.category))];
   const mine=[...S.board].sort((a,b)=>(a.createdAt||"")<(b.createdAt||"")?1:-1);
   const row=r=>`<div class="row static"><div><div class="n" style="${r.name?"":"color:var(--muted);font-weight:500"}">${esc(r.name||"Name still needed")}</div><div class="d">${esc(r.title)}</div></div><div class="r num wrap">${esc(r.phone||"")}${r.phone&&r.email?"<br>":""}${esc(r.email||"")}</div></div>`;
-  return `<div class="note"><b>Kelly's rule:</b> only add contacts to her spreadsheet. Don't reach out or invite anyone; she sends every invitation. First meeting Thursday Oct 29, 4:00 PM. Yellow rows on her sheet are placeholders: fill in a name where you know one.</div>
-  <section class="sec"><div class="h"><h2>Names I'm adding</h2><span class="meta">${mine.filter(m=>!m.onSheet).length} not yet on Kelly's sheet</span><button class="btn sm pri" data-act="board-add">+ Name</button></div>
+  return `  <section class="sec"><div class="h"><h2>Names I'm adding</h2><span class="meta">${mine.filter(m=>!m.onSheet).length} not yet on Kelly's sheet</span><button class="btn sm pri" data-act="board-add">+ Name</button></div>
     <div class="rows">${mine.map(m=>`<div class="row" data-act="board-edit" data-id="${m.id}"><div><div class="n">${esc(m.name)}</div><div class="d">${esc(m.title||"")}${m.category?", "+esc(m.category):""}${m.phone||m.email?", "+esc([m.phone,m.email].filter(Boolean).join(" "))+"":""}</div></div><div class="r">${m.onSheet?`<span class="pill green">on her sheet</span>`:`<span class="pill orange">add to sheet</span>`}</div></div>`).join("")||`<p class="empty">${S.loaded.board?"Community leaders you want on the board go here first, then onto Kelly's sheet.":ld()}</p>`}</div>
   </section>
   <section class="sec"><div class="h"><h2>Already on Kelly's invite list</h2><span class="meta">${inv.length} rows</span></div>
@@ -3176,10 +3175,10 @@ fbSetupViews();
 const TM_SECTIONS=[
   {id:"events",name:"Events",tc:"gold",apps:["events","proposals"],blurb:"Where LEAD shows up, and getting ready for it"},
   {id:"programming",name:"Programming",tc:"green",apps:["programs","center"],blurb:"Classes, videos and the center calendar"},
-  {id:"meetings",name:"Meetings",tc:"orange",apps:["meetings","tasks"],blurb:"What was decided and who does what"},
-  {id:"canvassing",name:"Canvassing",tc:"blue",apps:["team","people","letters","board","map","blead"],blurb:"Signatures, signers, shifts and supporters"}
+  {id:"meetings",name:"Meetings",tc:"orange",apps:["meetings","tasks","board"],blurb:"What was decided and who does what"},
+  {id:"canvassing",name:"Canvassing",tc:"blue",apps:["team","people","letters","map"],blurb:"Signatures, signers, shifts and supporters"}
 ];
-const TM_TABS=[["campaign","Campaign"],["role","My role"],["tools","Tools & resources"],["runs","How LEAD runs"]];
+const TM_TABS=[["campaign","Campaign"],["role","My role"],["tools","Tools & resources"]];
 const TM_ROLE_APPS=["hours","log"];
 const TM_TOOL_APPS=["sig","playbook","org","cultures","settings"];
 const TM_RUNS=["center"];
@@ -3209,7 +3208,7 @@ const tmApps=ids=>ids.map(appById).filter(a=>a&&appOK(a));
     if(s){a.row=s.id;a.tc=s.tc;}
     else if(a.id==="today"){a.row="campaign";a.tc="blue";}
     else if(TM_ROLE_APPS.includes(a.id)){a.row="role";a.tc="slate";}
-    else if(TM_RUNS.includes(a.id)){a.row="runs";a.tc="green";}
+    else if(TM_RUNS.includes(a.id)){a.row="programming";a.tc="green";}
     else{a.row="tools";a.tc="gold";}});
   const d=id=>APPS.find(a=>a.id===id);
   if(d("center"))d("center").desc="The center's program calendar and registration, and the keyholder codes.";
@@ -3222,8 +3221,10 @@ const tmApps=ids=>ids.map(appById).filter(a=>a&&appOK(a));
   TITLES.center="Calendar";PAGE_CONTEXT.center="Programs, registration & codes";
   PAGE_CONTEXT.today="Across your centers";
   IC.resources='<path d="M3.5 7.5a2 2 0 0 1 2-2h4l2 2h7a2 2 0 0 1 2 2v7.5a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2z"/><path d="M8 13h8M8 16h5"/>';
-  // Settings is for everyone now (level, center, look); the owner-only parts stay inside it.
-  for(const k of Object.keys(VIEWS))VIEWS[k].hide=VIEWS[k].hide.filter(t=>t!=="settings");
+  // Settings and Hours are for everyone now (each person's own hours); B-LEAD deep dive stays the owner's.
+  for(const k of Object.keys(VIEWS)){VIEWS[k].hide=VIEWS[k].hide.filter(t=>t!=="settings"&&t!=="hours");if(FB&&!FB.owner)VIEWS[k].hide=[...new Set([...VIEWS[k].hide,"blead"])];}
+  if(S.tv==="list")S.tv="board";
+  if(S.pb==="howto")S.pb="questions";          // Training opens on the question inbox
   if(!S.home.tab||!TM_TABS.some(t=>t[0]===S.home.tab))S.home.tab="campaign";
   const strip=document.getElementById("appStrip");
   if(strip){
@@ -3342,9 +3343,9 @@ function tmTodayPanel(){
   const cards=[];
   cards.push(tmMetric({l:"Signatures so far",v:`${sg.all}<small> / ${goal}</small>`,s:`<span class="th-bar"><i style="width:${(pct*100).toFixed(1)}%"></i></span>${plus?`+${plus} logged today`:"as of today"}`,go:tabOK("team")?"team":"today",tc:"blue"}));
   if(tabOK("meetings")){
-    cards.push(tmMetric({l:"Meetings today",v:mt.length,s:mt.length?esc(mt.slice(0,2).map(m=>(m.time?tmClock(m.time)+" ":"")+(m.title||"Meeting")).join(" · ")):"Nothing on the calendar",go:"meetings",tc:"orange"}));
+    cards.push(tmMetric({l:"Meetings today",v:mt.length,s:mt.length?esc(mt.slice(0,2).map(m=>(m.time?tmClock(m.time)+" ":"")+(m.title||"Meeting")).join(" · ")):"Nothing on the calendar",act:"mtg-today",tc:"orange"}));
     const day=nx?tmWhen(nx.date,""):"";
-    cards.push(tmMetric({l:"Next meeting",v:nx?esc(nx.time?tmClock(nx.time):day):"—",s:nx?esc((nx.title||"Meeting")+(nx.time?" · "+day:"")):"None scheduled. Add one in Meetings.",go:"meetings",tc:"orange"}));
+    cards.push(tmMetric({l:"Next meeting",v:nx?esc(nx.time?tmClock(nx.time):day):"—",s:nx?esc((nx.title||"Meeting")+(nx.time?" · "+day:"")):"None scheduled. Add one in Meetings.",act:nx?"mtg-next":"mtg-today",tc:"orange"}));
   }
   cards.push(tmMetric({l:"Programs today",v:pr.length,s:pr.length?esc(pr.slice(0,3).map(p=>p.n+(p.t?" ("+p.t+")":"")).join(" · ")):"No classes or center programs today",go:tabOK("programs")?"programs":tabOK("center")?"center":"",tc:"green"}));
   cards.push(tmMetric({l:"In the office",v:tmX()?inn.length:"—",s:tmX()?(inn.length?esc(inn.slice(0,4).map(p=>(p.name||"").split(/\s+/)[0]).join(", "))+(inn.length>4?` +${inn.length-4}`:""):"Nobody checked in yet")+` · <u>${tmAmIn()?"Check out":"I'm in today"}</u>`:"Check-ins work on the team site",act:tmX()?(tmAmIn()?"out":"in"):"",tc:"gold"}));
@@ -3402,7 +3403,7 @@ function tmDoNowBlock(max){
 }
 function tmWeek(){
   const E=allE(),t0=todayISO(),days=[];for(let i=0;i<7;i++)days.push(addDays(t0,i));
-  return `<section class="sec th-week"><div class="h"><h2>This week</h2><span class="meta">green = you can table · color bar = center program</span></div>
+  return `<section class="sec th-week"><div class="h"><h2>This week</h2><span class="meta">green = you can table · color bar = center program</span><span class="sp"></span>${tabOK("center")?`<button class="btn sm" data-go2="center">Calendar</button>`:""}${tabOK("events")?`<button class="btn sm ghost" data-go2="events">All events</button>`:""}</div>
     <div class="week">${days.map((dd,i)=>{const evs=E.filter(e=>e.date===dd||(e.end_date&&e.date<=dd&&e.end_date>=dd)).sort((a,b)=>(a.time||"").localeCompare(b.time||""));let extra="";try{extra=ctrWeekChips(dd)+cuWeekChips(dd);}catch(e){}
       return `<div class="day ${i===0?"today":""}"><div class="d"><b>${parseISO(dd).getDate()}</b>${DOW[parseISO(dd).getDay()]}</div>${evs.slice(0,4).map(e=>`<div class="ev ${e.can_table===true?"table":""}" data-open="${e.id}">${esc(e.name)}<div class="t">${esc((e.time||"").split("–")[0].split(" - ")[0].trim())} ${esc(townOf(e))}</div></div>`).join("")}${evs.length>4?`<button class="ev more" data-act="week-more">+${evs.length-4} more</button>`:""}${extra||(!evs.length?`<div class="muted" style="font-size:12px">—</div>`:"")}</div>`;}).join("")}</div>
   </section>`;
@@ -3416,10 +3417,16 @@ function tmMeetingsBlock(mine){
 }
 function tmCampaign(){
   return `${tmTodayPanel()}
-  <div class="th-secs2">${TM_SECTIONS.map(tmSectionBlock).join("")}</div>
   ${tmWeek()}
-  <div class="th-two">${tmMeetingsBlock(false)}${tmDoNowBlock(3)}</div>`;
+  <div class="th-secs2">${TM_SECTIONS.map(tmSectionBlock).join("")}</div>
+  ${tmMeetingsBlock(false)}`;
 }
+function tmMeetingsTodaySheet(){const t0=todayISO(),key=m=>tm24(m.time)||"99";
+  const L=S.meetings.filter(m=>m.date===t0).sort((a,b)=>key(a)<key(b)?-1:1),up=tmUpcoming().filter(m=>m.date!==t0).slice(0,5);
+  const row=m=>`<div class="row" data-ms="open" data-id="${m.id}"><div><div class="n">${esc(m.title||"Meeting")}</div><div class="d">${esc([m.where,m.with?"with "+m.with:""].filter(Boolean).join(" · "))}</div></div><div class="r">${esc(m.date===t0?(m.time?tmClock(m.time):"today"):tmWhen(m.date,m.time))}</div></div>`;
+  openSheet("Meetings today",`<div class="ms">${L.length?`<div class="rows">${L.map(row).join("")}</div>`:`<p class="empty">No meetings today.</p>`}${up.length?`<h3>Coming up</h3><div class="rows">${up.map(row).join("")}</div>`:""}</div>`,
+    {btns:`${S.canWrite===false?"":`<button class="btn" data-ms="add">+ Meeting</button>`}<button class="btn ghost" data-close="1">Close</button>`});
+  $("#overlay").querySelectorAll("[data-ms]").forEach(b=>b.onclick=()=>{if(b.dataset.ms==="add")meetingForm();else{closeOverlay();tmMeetingSheet(b.dataset.id);}});}
 function tmRole(){
   const t0=todayISO(),ws=weekStart(),we=addDays(ws,6),up=tabOK("meetings")?tmUpcoming():[];
   const myNx=up.find(tmMine)||null,nx=myNx||up[0]||null;
@@ -3430,18 +3437,18 @@ function tmRole(){
   if(tabOK("meetings")){const day=nx?tmWhen(nx.date,""):"";cards.push(tmMetric({l:myNx?"My next meeting":"Next team meeting",v:nx?esc(nx.time?tmClock(nx.time):day):"—",s:nx?esc((nx.title||"Meeting")+(nx.time?" · "+day:"")):"Nothing scheduled",go:"meetings",tc:"orange"}));}
   cards.push(tmMetric({l:own.length?"My tasks":"Open tasks",v:mine.length,s:dueNow?`<span class="late">${dueNow} due today or late</span>`:own.length?"open, in My role":"at your center · yours show here once you add some",go:tabOK("tasks")?"tasks":"",tc:"blue"}));
   if(tabOK("hours")){const hw=S.hours.filter(x=>x.date>=ws&&x.date<=we).reduce((a,x)=>a+(+x.hours||0),0),ui=uninvoiced();
-    cards.push(tmMetric({l:"Hours this week",v:Math.round(hw*10)/10,s:`${ui.h}h not invoiced yet ($${ui.amt})`,go:"hours",tc:"slate"}));}
-  if(tabOK("team")){const me=ME().name,em=tmMe();const sh=S.shifts.filter(x=>x.date>=ws&&x.date<=we&&((em&&x._by===em)||(me&&x.who===me)));
-    cards.push(tmMetric({l:"My shifts this week",v:sh.length,s:`${sh.reduce((a,x)=>a+(+x.sigs||0),0)} signatures`,go:"team",tc:"blue"}));}
+    cards.push(tmMetric({l:"Hours this week",v:Math.round(hw*10)/10,s:FB&&FB.owner?`${ui.h}h not invoiced yet ($${ui.amt})`:(hw?"logged by you":"Log your hours in Hours"),go:"hours",tc:"slate"}));}
   cards.push(tmMetric({l:"Today",v:esc(fmtDate(t0)),s:tmX()?(tmAmIn()?"You're checked in · <u>Check out</u>":"<u>I'm in the office today</u>"):"",act:tmX()?(tmAmIn()?"out":"in"):"",tc:"gold"}));
   const tiles=tmApps([...TM_ROLE_APPS,"tasks","center","sig"]);
   return `<section class="th-today"><div class="th-h"><h2>My day</h2><span class="meta">${esc([ME().title,FB&&FB.center&&FB.center!=="all"?tmCenterName(FB.center):""].filter(Boolean).join(" · "))}</span></div><div class="th-ms">${cards.join("")}</div></section>
   <div class="th-two">
-    <section class="sec"><div class="h"><h2>${own.length?"My tasks":"Open tasks"}</h2><span class="meta">${mine.length} open${own.length?"":" · the team's, until you add your own"}</span><span class="sp"></span><button class="btn sm" data-tm="my-task">+ Task</button></div>
+    <section class="sec do"><div class="h"><h2>${own.length?"My tasks":"Open tasks"}</h2><span class="meta">${mine.length} open${own.length?"":" · the team's, until you add your own"}</span><span class="sp"></span><button class="btn sm" data-tm="my-task">+ Task</button></div>
       <div class="rows">${mine.slice(0,8).map(t=>`<div class="row static"><button class="ck" data-act="task-done" data-id="${t.id}" aria-label="Done"></button><div><div class="n" data-act="task-edit" data-id="${t.id}" style="cursor:pointer">${esc(t.title)}</div><div class="d">${esc(t.notes||"")}</div></div><div class="r">${t._x.date?esc(fmtDate(t._x.date))+"<br>"+esc(rel(t._x.days)):""}</div></div>`).join("")||`<p class="empty">Nothing on your own list. Tasks in the "My role" section only show for you.</p>`}</div>
     </section>
     ${tmMeetingsBlock(true)}
   </div>
+  ${tmDoNowBlock(5)}
+  ${(()=>{const tl=FB&&FB.owner?S.playbook.find(p=>tmPbIs(p,TM_PB_ROLE)):null;return tl?`<section class="sec"><div class="h"><h2>${esc(tl.title)}</h2><span class="meta">only you see this</span></div><p class="ms-notes" style="font-size:14px">${linkify(tl.body||"")}</p></section>`:"";})()}
   ${tiles.length?`<section class="sec"><div class="h"><h2>Mine</h2></div><div class="th-apps th-apps-big">${tiles.map(a=>`<button data-go2="${a.id}" style="--tc:var(--t-${a.tc})"><span class="ic">${icon(a.id)}</span><span class="n">${esc(appName(a))}</span><span class="d">${esc(a.desc)}</span></button>`).join("")}</div></section>`:""}`;
 }
 function tmLinkList(list,empty){return (list||[]).length?`<div class="links">${list.map(l=>l.url?`<a href="${esc(l.url)}" target="_blank" rel="noopener"><div class="n">${esc(l.name)}</div><div class="d">${esc(l.note||cmtyShortUrl(l.url))}</div></a>`:`<span class="nolink"><div class="n" style="color:var(--ink)">${esc(l.name)}</div><div class="d">${esc(l.note||"")}</div></span>`).join("")}</div>`:`<p class="empty">${empty}</p>`;}
@@ -3459,8 +3466,9 @@ function tmTools(onHome){
     ${tabOK("settings")?card("settings","Settings","Your level and center, and the look","Open ›","slate"):""}
   </div>
   ${cmtyBlock()}
+  ${(()=>{const cp=S.playbook.find(p=>tmPbIs(p,TM_PB_TOOLS));return cp?`<section class="sec"><div class="h"><h2>Community partners</h2><span class="meta">warm intros and proof when pitching a new partner</span></div><p class="ms-notes" style="font-size:14px">${linkify(cp.body||"")}</p></section>`:"";})()}
   <div class="th-two">
-    <section class="sec"><div class="h"><h2>Tools and files</h2><span class="sp"></span>${edit?`<button class="btn sm" data-act="links-edit">Edit</button>`:""}</div>${tmLinkList(st.links,"No links yet."+(edit?" Add the team's tools with Edit.":""))}</section>
+    <section class="sec"><div class="h"><h2>Tools and files</h2><span class="sp"></span>${edit?`<button class="btn sm" data-act="links-edit">Edit</button>`:""}</div>${(()=>{const reg=(typeof CTR!=="undefined"&&CTR.center&&CTR.center.reg)?[{name:"Program registration form",url:CTR.center.reg,note:"The sign-up form for the center's programs"}]:[];const team=(st.links||[]).filter(l=>/registration|board of champions|sign.?up/i.test(l.name||""));const mine=(st.links||[]).filter(l=>!team.includes(l));const owner=!!(FB&&FB.owner);return tmLinkList(reg.concat(team),"The registration form shows here once the center's calendar is loaded.")+(owner&&mine.length?`<h3 class="ev-wk">Only you see these</h3>`+tmLinkList(mine,""):"");})()}</section>
     <section class="sec"><div class="h"><h2>Drive folders</h2><span class="sp"></span>${edit?`<button class="btn sm" data-tm="drive-edit">Edit</button>`:""}</div>${tmLinkList(st.drive,"No Drive folders yet."+(edit?" Add shared folders with Edit.":" Your coordinator adds these."))}</section>
   </div>
   ${tmFeedbackList()}`;
@@ -3495,7 +3503,6 @@ function tmFoot(){
     <div><h3>Executives</h3>${list(ex,tmX()?"Shows up as executives sign in.":"Listed on the team site.")}</div>
     <div><h3>Coordinators</h3>${list(co,tmX()?"Shows up as coordinators sign in.":"Listed on the team site.")}</div>
     <div><h3>Follow LEAD</h3><ul>${TM_SOCIAL.map(([l,u])=>`<li><a href="${u}" target="_blank" rel="noopener">${esc(l)}</a></li>`).join("")}${COMMUNITY.map(c=>`<li><a href="${esc(c.url)}" target="_blank" rel="noopener">${esc(c.kind)}</a></li>`).join("")}</ul></div>
-    <div><h3>Drive</h3>${(st.drive||[]).length?`<ul>${st.drive.map(l=>`<li>${l.url?`<a href="${esc(l.url)}" target="_blank" rel="noopener">${esc(l.name)}</a>`:esc(l.name)}</li>`).join("")}</ul>`:`<p class="muted small">No shared folders yet.${tmLeadish()?` <button class="linkbtn" data-tm="drive-edit">Add them</button>`:""}</p>`}</div>
   </footer>`;
 }
 function tmDriveForm(){const st=S.settings||{};const L=st.drive||[];const slots=Array.from({length:10},(_,i)=>L[i]||{name:"",url:""});
@@ -3679,6 +3686,7 @@ const tmHomeBind=homeBind;
 homeBind=function(v){tmHomeBind(v);TM.ready=true;tmBind(v);};
 function tmBind(v){
   v.querySelectorAll("[data-htab]").forEach(b=>b.addEventListener("click",()=>{S.home.tab=b.dataset.htab;homeSave();render();}));
+  const tq=v.querySelector("#tqIn");if(tq)tq.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();tmAskQuestion(v);}});
   v.querySelectorAll("select[data-tm]").forEach(sel=>sel.addEventListener("change",async()=>{const a=sel.dataset.tm;
     if(a==="cal-center"){S.cal.center=sel.value;S.cal.codes=null;render();}
     else if(a==="set-center"&&sel.value){const x=tmX();try{await x.setCenter(sel.value);toast("Center saved");location.reload();}catch(e){toast("Couldn't save your center: "+((e&&e.message)||e));}}
@@ -3695,6 +3703,11 @@ function tmBind(v){
     else if(a==="theme"){setTheme(b.dataset.v);render();}
     else if(a==="msg"){TM.to={id:b.dataset.id,name:b.dataset.name};TM.askTab="ask";tmAskToggle(true);tmSay("bot",`Writing to <b>${esc(b.dataset.name)}</b>. Type your message and press Send.`);}
     else if(a==="mtg")tmMeetingSheet(b.dataset.id);
+    else if(a==="mtg-today")tmMeetingsTodaySheet();
+    else if(a==="mtg-next"){const nx=tmNextMeeting();if(nx)tmMeetingSheet(nx.id);}
+    else if(a==="q-ask")tmAskQuestion(v);
+    else if(a==="q-answer")tmAnswerQuestion(b.dataset.id);
+    else if(a==="q-howto")tmQuestionToHowto(b.dataset.id);
     else if(a==="prog")tmProgramSheet(b.dataset.id);
     else if(a==="rd-submit")tmRdSubmit(b.dataset.id);
     else if(a==="rd-print")window.print();
@@ -3808,6 +3821,91 @@ function tmProgramSheet(key){const p=tmPrograms().find(x=>x.key===key);if(!p)ret
     else if(a==="vid")videoForm(S.videos.find(v=>v.id===id));else if(a==="ses")sessionForm(S.sessions.find(v=>v.id===id));}));}
 videoForm=function(x,pre){const isNew=!x||!x.id;x=x||pre||{};form({title:isNew?"Log a video":"Edit video",fields:[{key:"program",label:"Program",type:"select",options:[["","(none)"],...tmProgOptions().map(n=>[n,n])]},{key:"date",label:"Date",type:"date",default:todayISO()},{key:"status",label:"Status",type:"select",options:["posted","scheduled","filming","idea"],default:"posted"},{key:"topic",label:"Topic",required:true,wide:true},{key:"where",label:"Posted where",placeholder:"Instagram, Facebook, TikTok"},{key:"url",label:"Link",wide:true}],values:x,onSave:async v=>write("videos",x.id||uid("v"),v),onDelete:isNew?null:()=>remove("videos",x.id)});};
 sessionForm=function(x,pre){const isNew=!x||!x.id;x=x||pre||{};form({title:isNew?"Log a class":"Edit class",fields:[{key:"date",label:"Date",type:"date",default:todayISO()},{key:"program",label:"Program",type:"select",options:tmProgOptions()},{key:"topic",label:"Topic or session",wide:true},{key:"participants",label:"People who came",type:"number"},{key:"where",label:"Where",default:ME().place},{key:"notes",label:"Notes",type:"textarea",rows:2,wide:true}],values:x,onSave:async v=>write("sessions",x.id||uid("ss"),{...v,participants:Number(v.participants)||0}),onDelete:isNew?null:()=>remove("sessions",x.id)});};
+
+/* ---------- Training: ask how to do something; answers become how-tos ---------- */
+const TM_PB_TEAM=["LEAD branches","Partner pitch","What we offer a partner","LEAD's numbers","Camera policy","Door and table script","Canvassing rules","Shifts and the schedule"];
+const TM_PB_TOOLS=["LEAD's community partners"];
+const TM_PB_ROLE=["The three lanes"];
+const TM_PB_TRIM={"Shifts and the schedule":2};
+const TM_FACT_HIDE=["Assumptions to confirm","Kelly's three lanes"];
+const tmPbIs=(p,list)=>list.some(x=>String(p.title||"").toLowerCase().startsWith(x.toLowerCase()));
+function tmPbText(t){return String(t||"").replace(/I'm \S+ with LEAD/g,"I'm "+(ME().first||"[your name]")+" with LEAD");}
+function tmPbBody(p){let b=String(p.body||"");const tr=Object.entries(TM_PB_TRIM).find(([k])=>String(p.title||"").toLowerCase().startsWith(k.toLowerCase()));if(tr)b=b.split("\n").slice(0,tr[1]).join("\n");return tmPbText(b);}
+const tmPbTeam=p=>!!p.team||tmPbIs(p,TM_PB_TEAM);
+const tmPlaybook0=rPlaybook;
+rPlaybook=function(){
+  const subs=["questions","howto","facts","meetings","schools"];if(!subs.includes(S.pb))S.pb="questions";const sub=S.pb;
+  const nav=[["questions","Ask & answers"],["howto","How-tos"],["facts","Script & facts"],["meetings","Hearings & meetings"],["schools","Schools & leaders"]];
+  let html=`<div class="subnav">${nav.map(([k,l])=>`<button data-act="pb-go" data-v="${k}" aria-pressed="${sub===k}">${l}</button>`).join("")}</div>`;
+  if(sub==="questions")html+=tmTrainingInbox();
+  else if(sub==="howto")html+=tmHowtos();
+  else if(sub==="facts")html+=tmFacts();
+  else{const full=tmPlaybook0();html+=full.slice(full.indexOf("</div>")+6);}
+  return html;};
+function tmTrainingInbox(){
+  const me=tmMe(),lead=tmLeadish(),owner=!!(FB&&FB.owner);
+  const all=S.questions.filter(q=>q.team||owner||q.by===me).sort((a,b)=>(a.createdAt||"")<(b.createdAt||"")?1:-1);
+  const open=all.filter(q=>q.status!=="answered"),ans=all.filter(q=>q.status==="answered");
+  const card=q=>`<div class="tq ${q.status==="answered"?"done":""}"><div class="tq-q">${esc(q.q)}</div><div class="tq-m">${esc([q.name||(q.team?"":"your note"),q.createdAt?"asked "+fmtDate(q.createdAt):"",!q.team&&q.askWho?"ask "+q.askWho:""].filter(Boolean).join(" · "))}</div>${q.answer?`<div class="tq-a">${linkify(q.answer)}${q.answeredBy?`<small>${esc(q.answeredBy)}${q.answeredAt?" · "+esc(fmtDate(q.answeredAt)):""}</small>`:""}</div>`:""}<div class="tq-acts">${S.canWrite===false?"":`${lead?`<button class="btn sm ${q.answer?"":"pri"}" data-tm="q-answer" data-id="${q.id}">${q.answer?"Edit the answer":"Answer"}</button>`:""}${lead&&q.answer?`<button class="btn sm" data-tm="q-howto" data-id="${q.id}">Make it a how-to</button>`:""}${owner||q.by===me?`<button class="btn sm ghost" data-act="q-open" data-id="${q.id}">Edit</button>`:""}`}</div></div>`;
+  return `<div class="tq-ask"><label for="tqIn">How do I…?</label><div class="tq-row"><input id="tqIn" placeholder="Ask how to do something at LEAD. A coordinator answers here, and the answer becomes a how-to." autocomplete="off"><button class="btn pri" data-tm="q-ask">Ask</button></div></div>
+  <h3 class="ev-wk">Open · ${open.length}</h3>${open.map(card).join("")||`<p class="empty">Nothing open. Ask away.</p>`}
+  <h3 class="ev-wk">Answered · ${ans.length}</h3>${ans.map(card).join("")||`<p class="empty">Answers show here once a coordinator replies.</p>`}`;}
+async function tmAskQuestion(v){const i=v.querySelector("#tqIn");if(!i)return;const q=i.value.trim();if(!q){i.focus();return;}
+  const ok=await write("questions",uid("q"),{q,askWho:"",lane:"",answer:"",status:"open",createdAt:todayISO(),team:true,by:tmMe(),name:ME().name,center:FB?FB.center||"":""});
+  if(ok){i.value="";toast("Asked. A coordinator will answer here.");tmLog("question","asked how to: "+q.slice(0,120));}}
+function tmAnswerQuestion(id){const q=S.questions.find(x=>x.id===id);if(!q)return;
+  openSheet("Answer",`<div class="ms"><p class="tq-q" style="margin:0 0 10px">${esc(q.q)}</p><textarea id="tqAns" class="gf-ta" style="min-height:120px" placeholder="Write the answer the way you'd say it">${esc(q.answer||"")}</textarea></div>`,
+    {btns:`<button class="btn pri" id="tqSave">Save answer</button><button class="btn ghost" data-close="1">Cancel</button>`});
+  $("#tqSave").onclick=async()=>{const a=$("#tqAns").value.trim();if(!a){$("#tqAns").focus();return;}
+    const ok=await write("questions",id,{...q,answer:a,status:"answered",answeredAt:q.answeredAt||todayISO(),answeredBy:ME().name});
+    if(ok){closeOverlay();toast("Answered");tmLog("question","answered: "+q.q.slice(0,100));}};}
+async function tmQuestionToHowto(id){const q=S.questions.find(x=>x.id===id);if(!q||!q.answer)return;
+  const ok=await write("playbook",uid("pb"),{title:q.q.replace(/\?+$/,""),body:q.answer,status:"confirmed",lane:"How LEAD works",team:true,by:tmMe(),createdAt:todayISO(),source:"Asked by "+(q.name||"a teammate")});
+  if(ok){toast("Added to the how-tos");tmLog("howto","added the how-to \""+q.q.slice(0,80)+"\"");}}
+function tmHowtos(){
+  const owner=!!(FB&&FB.owner),L=S.playbook.filter(tmPbTeam).sort((a,b)=>(a.order??99)-(b.order??99)||(a.title||"").localeCompare(b.title||""));
+  const lanes=[...new Set(L.map(p=>p.lane||"How LEAD works"))];
+  const card=p=>`<details class="ht"><summary><span class="ht-t">${esc(p.title)}</span>${p.source?`<span class="ht-l">${esc(p.source)}</span>`:""}</summary><div class="ht-b">${linkify(tmPbBody(p)).replace(/\n/g,"<br>")}${(owner||tmLeadish())&&S.canWrite!==false?`<div class="chips" style="margin-top:10px"><button class="btn sm ghost" data-act="pb-open" data-id="${p.id}">Edit</button></div>`:""}</div></details>`;
+  const priv=owner?S.playbook.filter(p=>!tmPbTeam(p)&&!tmPbIs(p,TM_PB_TOOLS)&&!tmPbIs(p,TM_PB_ROLE)):[];
+  return `<div class="toolrow"><span class="muted small">How LEAD does things. Open one to read it.</span><span class="sp"></span>${tmLeadish()&&S.canWrite!==false?`<button class="btn sm pri" data-act="pb-add">+ How-to</button>`:""}</div>
+  ${lanes.map(l=>`<h3 class="ev-wk">${esc(l)}</h3>${L.filter(p=>(p.lane||"How LEAD works")===l).map(card).join("")}`).join("")||`<p class="empty">No how-tos yet. Answered questions can become one.</p>`}
+  ${priv.length?`<h3 class="ev-wk">Only you see these (your own notes)</h3>${priv.map(card).join("")}`:""}`;}
+function tmFacts(){const owner=!!(FB&&FB.owner);const F=(REF.FACTS||[]).filter(f=>owner||!TM_FACT_HIDE.some(x=>String(f.title||"").startsWith(x)));
+  return `<p class="muted small">The script, and the facts to say out loud.</p><div class="facts">${F.map(f=>`<h3>${esc(f.title)}</h3><ul>${(f.items||[]).map(i=>`<li>${linkify(tmPbText(i))}</li>`).join("")}</ul>`).join("")||`<p class="empty">Nothing here yet.</p>`}</div>`;}
+
+/* ---------- moving around: the phone's back button works, and ‹ LEAD goes up one level first ---------- */
+TM.fromPop=false;
+const tmGoNav=go;
+go=function(tab,keep){const prev=S.tab;tmGoNav(tab,keep);if(!TM.fromPop&&tab!==prev){try{history.pushState({tab},"",location.pathname+location.search+(tab==="home"?"":"#"+tab));}catch(e){}}};
+window.addEventListener("popstate",e=>{const t=(e.state&&e.state.tab)||"home";TM.fromPop=true;try{if(t!==S.tab)go(t);}finally{TM.fromPop=false;}});
+try{history.replaceState({tab:S.tab},"",location.pathname+location.search+(S.tab==="home"?"":"#"+S.tab));}catch(e){}
+(function(){const hb=document.getElementById("homeBtn");if(!hb)return;hb.addEventListener("click",e=>{const up=document.querySelector("#view [data-rd-back], #view .pr-back, #view [data-act=\"prop-back\"]");if(up){e.stopImmediatePropagation();e.preventDefault();up.click();}},true);})();
+
+/* ---------- Proposals: one column, like the form the group filled in ---------- */
+rProposal=function(p){const s=propScore(p),r=p.r||{},f=p.flags||{},tg=p.tags||{},ai=p.ai||{},id=p.id;
+  const val=k=>{const d=S.pdraft[id+":"+k];return d!=null?d:((p.a||{})[k]||"");};
+  const fv=k=>{const d=S.pdraft[id+":f:"+k];return d!=null?d:(p[k]||"");};
+  const yn=k=>`<span class="opts">${["Yes","No"].map(v=>`<button data-prf="${k}" data-v="${v}" aria-pressed="${f[k]===v}">${v}</button>`).join("")}</span>`;
+  const field=(k,l,type,ph)=>`<div class="gf-card"><label class="gf-q" for="prf-${k}">${esc(l)}</label><input id="prf-${k}" class="gf-in" data-prk="${k}" ${type?`type="${type}"`:""} value="${esc(fv(k))}" ${ph?`placeholder="${esc(ph)}"`:""}></div>`;
+  const cls={go:"green",fit:"blue",hold:"orange",skip:"red"}[s.cls]||"";
+  const hasAI=PROP_KEYS.some(k=>ai[k]);
+  return `<button class="pr-back" data-act="prop-back">‹ All proposals</button>
+  <div class="gf">
+    <div class="gf-card gf-head"><div class="gf-bar"></div><h2>${esc(propName(p))}</h2><p class="muted" style="margin:4px 0 0">${esc([p.title,p.contact_name,p.received?"received "+fmtDate(p.received,true):""].filter(Boolean).join(" · "))||"The 8 parts LEAD asks a group for, and how well it fits."}</p>
+      <div class="gf-status">${PROP_ST.map(([k,l,,c])=>`<button data-prst="${k}" aria-pressed="${(p.status||"new")===k}"><i style="background:${c}"></i>${l}</button>`).join("")}</div>
+      <div class="gf-score"><b class="num ${cls}">${s.score}<small>/16</small></b><span>${s.v?`<b>${esc(s.v)}</b> · `:""}${esc(s.label||"")}${s.label?" · ":""}${s.filled} of 8 parts in, ${s.rated} rated</span></div>
+      <div class="chips gf-acts"><button class="btn sm pri" data-act="prop-summary">Copy summary for exec</button><button class="btn sm" data-act="prop-ask" ${s.missing.length?"":"disabled"}>Ask for the missing parts${s.missing.length?" ("+s.missing.length+")":""}</button>
+        <details class="gf-more"><summary class="btn sm">More</summary><div class="chips"><button class="btn sm" data-act="prop-ai" id="prAiBtn">Read it with AI</button>${hasAI?`<button class="btn sm" data-act="prop-useai">Use AI ratings</button>`:""}${p.eventId&&getRec(p.eventId)?`<button class="btn sm" data-act="prop-ev-open">Open the event</button>`:`<button class="btn sm" data-act="prop-ev" ${tabOK("events")?"":"hidden"}>Add to Events</button>`}${p.targetId&&getRec(p.targetId)?`<button class="btn sm" data-act="prop-t-open">Open the org</button>`:`<button class="btn sm" data-act="prop-t" ${tabOK("people")?"":"hidden"}>Add org to People &amp; orgs</button>`}<button class="btn sm danger" data-act="prop-del">Delete proposal</button></div></details></div>
+    </div>
+    ${field("org","Organization")}${field("title","Program or event name")}${field("contact_name","Contact person")}${field("email","Email","email")}${field("phone","Phone","tel")}${field("received","Date received","date")}
+    <div class="gf-card"><label class="gf-q" for="prf-pillar">LEAD pillar</label><select id="prf-pillar" class="gf-in" data-prk="pillar">${PROP_PILLARS.map(x=>`<option value="${esc(x)}" ${(p.pillar||"")===x?"selected":""}>${x||"Not picked"}</option>`).join("")}</select></div>
+    ${PROP_SECS.map(([k,l,d],i)=>{const v=val(k),q=PROP_Q[k],a=ai[k];return `<div class="gf-card" id="pr-${k}"><div class="gf-q"><span class="n">${i+1}</span>${esc(l)}</div><p class="gf-help">${esc(d)}</p>
+      <textarea id="pra-${k}" data-pra="${k}" class="gf-ta ${String(v).trim()?"":"empty"}" placeholder="Their answer">${esc(v)}</textarea>
+      <div class="gf-rate"><span>${esc(q[0])}<small>${esc(q[1])}</small>${a?`<small class="ai">AI: ${esc(String(a.r))} · ${esc(a.why||"")}</small>`:""}</span><span class="opts">${[0,1,2].map(n=>`<button data-prr="${k}" data-v="${n}" aria-pressed="${String(r[k])===String(n)}">${n}</button>`).join("")}</span></div></div>`;}).join("")}
+    <div class="gf-card"><div class="gf-q">For the calendar</div><div class="gf-grid3"><div><label class="small muted" for="prf-people">Expected participants</label><input id="prf-people" class="gf-in" data-prk="people" inputmode="numeric" value="${esc(fv("people"))}"></div><div><label class="small muted" for="prf-date">First date</label><input id="prf-date" class="gf-in" type="date" data-prk="date" value="${esc(fv("date"))}"></div><div><label class="small muted" for="prf-time">Time</label><input id="prf-time" class="gf-in" data-prk="time" value="${esc(fv("time"))}" placeholder="6:00 PM – 7:30 PM"></div></div></div>
+    <div class="gf-card"><div class="gf-q">Two quick checks</div><div class="gf-row"><span>Political or campaign content?<small>A yes puts it on hold for the exec team.</small></span>${yn("political")}</div><div class="gf-row"><span>Sells a product or service to the people who come?<small>Goes in the summary; doesn't change the score.</small></span>${yn("selling")}</div><div class="ck2"><label><input type="checkbox" id="prt-blead" data-prt="blead" ${tg.blead?"checked":""}>Reaches B-LEAD communities</label><label><input type="checkbox" id="prt-charter" data-prt="charter" ${tg.charter?"checked":""}>Touches charter schools or education leaders</label></div></div>
+    <div class="gf-card"><label class="gf-q" for="prn-notes">Notes</label><textarea id="prn-notes" class="gf-ta pr-notes" data-prk="notes" placeholder="Questions for the group, conditions for a yes">${esc(fv("notes"))}</textarea>${p.raw?`<details class="pr-raw"><summary>What they sent (original text)</summary><pre>${esc(p.raw)}</pre></details>`:""}</div>
+  </div>`;};
 
 /* ---------- feedback: training sessions and the software demo ---------- */
 const TM_FEEDBACK={

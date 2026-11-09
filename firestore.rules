@@ -54,7 +54,7 @@ service cloud.firestore {
     function canRead(col, r) {
       return isOwner() || (live() && (
         col in orgwide()
-        || (col == 'ptasks' && r.data._owner == me())
+        || (col in ['ptasks', 'phours'] && r.data._owner == me())
         || (col in scoped() && (
              lead()
           || (role() == 'asst' && inMine(r))
@@ -71,8 +71,8 @@ service cloud.firestore {
     function canWrite(col, d) {
       return isOwner() || (live() && (
         (col in ['meta', 'cv'] && lead())
-        || (col in orgwide() && !(col in ['meta', 'cv']) && (staff() || (col == 'geo' && role() in ['canv', 'special'])))
-        || (col == 'ptasks' && d._owner == me())
+        || (col in orgwide() && !(col in ['meta', 'cv']) && (staff() || col == 'questions' || (col == 'geo' && role() in ['canv', 'special'])))
+        || (col in ['ptasks', 'phours'] && d._owner == me())
         || (col in scoped() && (
              (lead() && (validCenter(d.center) || d.center == 'all'))
           || (role() == 'asst' && mine(d))

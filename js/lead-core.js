@@ -6,7 +6,7 @@
 
 // ---------------------------------------------------------------- centers
 export const CENTERS = [
-  { id: "east-hartford", name: "Hartford", full: "Greater Hartford (East Hartford)", city: "East Hartford, CT", ll: [41.7823, -72.612] },
+  { id: "east-hartford", name: "East Hartford", full: "Greater Hartford (East Hartford)", city: "East Hartford, CT", ll: [41.7823, -72.612] },
   { id: "new-britain", name: "New Britain", full: "New Britain", city: "New Britain, CT", ll: [41.6612, -72.7795] },
   { id: "waterbury", name: "Waterbury", full: "Waterbury", city: "Waterbury, CT", ll: [41.5582, -73.0515] },
   { id: "danbury", name: "Danbury", full: "Danbury", city: "Danbury, CT", ll: [41.3948, -73.454] },
@@ -53,6 +53,7 @@ export const OWNED = ["shifts", "signers"];           // a trial sees only the o
 export const LEADS_ONLY = ["meta", "cv"];             // goals and settings: coordinators, executives, the owner
 export const RESERVED = ["access", "system", "roster", "requests", "ref", "presence", "directory", "messages", "feedback", "codes", "activity"];
 export const PERSONAL = "ptasks";                     // everyone's own "My role" tasks
+export const PERSONAL_HOURS = "phours";               // everyone's own hours (the owner's stay in hours)
 export const PRIVATE_SETTINGS = ["rate", "invoicedThrough", "nextInvoiceNo"];
 export const TIERS = ["core", "canvass", "contacts"];
 
@@ -68,7 +69,7 @@ export function ruleRead(col, d, ctx) {
   if (ctx.owner) return true;
   if (!ctx.role) return false;
   if (ORGWIDE.includes(col)) return true;
-  if (col === PERSONAL) return d._owner === ctx.email;
+  if (col === PERSONAL || col === PERSONAL_HOURS) return d._owner === ctx.email;
   if (!SCOPED.includes(col)) return false;                       // hours, log, private: owner only
   if (isLead(ctx)) return true;
   if (ctx.role === "asst") return inMine(d, ctx);
@@ -86,8 +87,8 @@ export function ruleWrite(col, d, ctx) {
   if (!ctx.role) return false;
   const staff = ["exec", "coord", "asst"].includes(ctx.role);
   if (LEADS_ONLY.includes(col)) return isLead(ctx);                 // org-wide goals and settings
-  if (ORGWIDE.includes(col)) return staff || (col === "geo" && ["canv", "special"].includes(ctx.role));
-  if (col === PERSONAL) return d._owner === ctx.email;
+  if (ORGWIDE.includes(col)) return staff || col === "questions" || (col === "geo" && ["canv", "special"].includes(ctx.role));
+  if (col === PERSONAL || col === PERSONAL_HOURS) return d._owner === ctx.email;
   if (!SCOPED.includes(col)) return false;
   const mine = d.center === ctx.center && !!ctx.center;
   if (isLead(ctx)) return CENTER_IDS.includes(d.center) || d.center === "all";
@@ -116,7 +117,7 @@ export function tierAllowed(tier, center, ctx) {
    from its filters alone that each result is allowed, which is what Firestore requires. */
 export function listenPlan(col, ctx) {
   if (RESERVED.includes(col)) return null;
-  if (col === PERSONAL) return [[["_owner", "==", ctx.email]]];
+  if (col === PERSONAL || col === PERSONAL_HOURS) return [[["_owner", "==", ctx.email]]];
   if (ctx.owner) return [[]];
   if (ORGWIDE.includes(col)) return [[]];
   if (!SCOPED.includes(col)) return null;
@@ -320,6 +321,7 @@ export function makeHubDB(backend, ctx, recordCenters) {
       const u2 = listenOne(PERSONAL, m => { mine = m; out(); }, err);
       return () => { u1(); u2(); };
     }
+    if (col === "hours" && !ctx.owner) return listenOne(PERSONAL_HOURS, m => { cache[PERSONAL_HOURS] = m; next(snapOf([...m])); }, err);
     return listenOne(col, m => { cache[col] = m; next(snapOf([...m].filter(([, d]) => inView(d)))); }, err);
   }
 
@@ -338,6 +340,7 @@ export function makeHubDB(backend, ctx, recordCenters) {
       if (C(PERSONAL).has(id)) await backend.del(PERSONAL, id);
       return;
     }
+    if (col === "hours" && !ctx.owner) { d._owner = ctx.email; await backend.set(PERSONAL_HOURS, id, d); return; }
     if (col === "meta" && id === "settings") {
       const priv = {};
       for (const k of PRIVATE_SETTINGS) if (k in d) { priv[k] = d[k]; delete d[k]; }
@@ -350,6 +353,7 @@ export function makeHubDB(backend, ctx, recordCenters) {
     await backend.set(col, id, d);
   }
   async function delDoc(col, id) {
+    if (col === "hours" && !ctx.owner) return backend.del(PERSONAL_HOURS, id);
     if (col === "tasks") {
       if (C(PERSONAL).has(id)) return backend.del(PERSONAL, id);
       return backend.del("tasks", id);

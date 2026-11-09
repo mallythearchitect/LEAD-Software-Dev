@@ -201,6 +201,8 @@ patch('${fmtDate(m.date,true)}${m.with?", with "+esc(m.with):""}', '${fmtDate(m.
 patch('const mapsQ=encodeURIComponent((r.address||"")+(r.address&&!/CT/.test(r.address)?", "+townOf(r)+" CT":""));',
       'const mapsQ=encodeURIComponent([r.venue,r.address,(!r.address||!/\\bCT\\b/.test(r.address))?townOf(r)+" CT":""].filter(Boolean).join(", "));')
 patch('${r.address?`<a class="btn sm" href="https://www.google.com/maps/dir/?api=1&destination=${mapsQ}"', '${(r.address||r.venue)?`<a class="btn sm" href="https://www.google.com/maps/dir/?api=1&destination=${mapsQ}"')
+patch(r'<div class="note"><b>Kelly\'s rule:</b>[^\n]*?</div>\n', '', regex=True)
+patch('[["list","List"],["board","Board"],["cal","Calendar"]]', '[["board","Board"],["list","List"],["cal","Calendar"]]')
 
 # 8. The top bar: the LEAD logo instead of the old name, the saved-status pill out at the edge.
 def mpatch(old, new, regex=False):
