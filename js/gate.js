@@ -1,11 +1,13 @@
-/* LEAD Ops Hub — team edition: sign-in, then loading the hub.
-   The sign-in card stays up until this person is signed in, approved by the hub's owner and (for
+/* LEAD — team edition: the team password, sign-in, then loading the hub.
+   The card stays up until this browser is unlocked with the team password (js/lock.js), the person is
+   signed in, approved by the hub's owner and (for
    levels tied to one center) has picked their center. Then only the data their level may see is
    loaded, the hub gets its database connection (window.__FB) and starts.
 
    Trying it on this computer without Firebase: run a local server in this folder and open
    http://localhost:8765/?offline  (made-up people and data; see js/dev/mock-fb.js for ?as=). */
 import { CENTERS, CENTER_IDS, ROLES, OWNER_VIEWS, roleLabel, centerName, grantsForPages, tierAllowed, assembleData, makeHubDB } from "./lead-core.js";
+import { isUnlocked, lockScreen, lockAgain } from "./lock.js";
 
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -39,6 +41,7 @@ const fmtDate = d => d.toLocaleDateString(undefined, { month: "short", day: "num
 const placeFor = id => id === "east-hartford" ? "LEAD Greater Hartford" : CENTER_IDS.includes(id) ? "LEAD " + centerName(id) : "LEAD";
 
 async function signOut() {
+  lockAgain();                                     // signing out locks this device again
   try { await FBX.signOut(); } catch (e) { /* signed out already */ }
   location.replace(location.pathname + keep());
 }
@@ -235,9 +238,38 @@ async function loadHub(u, acc, isOwner) {
       town: homeC ? homeC.city.replace(/, CT$/, "") : "Connecticut", city: homeC ? homeC.city : "Connecticut" },
     email: u.email, center: acc.center || "", viewCenters, cvCenter: wide ? (viewCenters.length === 1 ? viewCenters[0] : "all") : acc.center,
     centerLabel: label, until: acc.until ? FBX.toDate(acc.until) : null, mode: FBX.mode, signOut,
+    centers: CENTERS.map(c => ({ id: c.id, name: c.name, city: c.city })),
+    x: teamApi(u, acc, isOwner),
   };
   await startHub();
   mountAccount(u, acc, isOwner);
+}
+
+/* The team pieces the hub's assistant uses: check-ins, the team list, messages, feedback, the center codes
+   and the assistant's key. Each call is bound to the signed-in person; firestore.rules decides the rest. */
+function teamApi(u, acc, isOwner) {
+  const role = acc.role, name = acc.name || u.name || u.email, center = acc.center || "", title = acc.title || "";
+  const lead = isOwner || !!(ROLES[role] || {}).lead;
+  const today = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; };
+  const warn = what => e => console.warn("[hub] " + what, (e && e.code) || e);
+  return {
+    lead, name, role, center,
+    setPresence: on => FBX.setPresence({ name, center, date: today(), in: !!on }),
+    watchPresence: (date, cb) => FBX.watchPresence(date, cb, warn("check-ins")),
+    joinDirectory: () => FBX.joinDirectory({ name, role, center, title }),
+    watchDirectory: cb => FBX.watchDirectory(cb, warn("team list")),
+    sendMessage: (to, text) => FBX.sendMessage(to.id, to.name || to.id, text, name),
+    watchInbox: cb => FBX.watchInbox(cb, warn("messages")),
+    watchSent: cb => FBX.watchSent(cb, warn("messages")),
+    markRead: id => FBX.markRead(id),
+    sendFeedback: d => FBX.sendFeedback({ ...d, role, center }),
+    watchFeedback: lead ? cb => FBX.watchFeedback(cb, warn("feedback")) : null,
+    getCodes: c => FBX.getCodes(c),
+    listRoster: () => FBX.listRoster(),
+    getAI: () => FBX.getAI(),
+    setCenter: c => FBX.updateMyAccess(u.email, { center: c }),
+    setViewCenters: list => FBX.updateMyAccess(u.email, { viewCenters: list }),
+  };
 }
 
 function addScript(src, text) {
@@ -317,6 +349,8 @@ function mountAccount(u, acc, isOwner) {
 
 // ---------------------------------------------------------------- start
 async function main() {
+  if (!(await isUnlocked())) await lockScreen($("#gateBody"), OFFLINE ? "Offline test: made-up people and data. Nothing leaves this computer." : "");
+  loading("Checking sign-in…");
   try { FBX = await import(OFFLINE ? "./dev/mock-fb.js" : "./lead-fb.js"); }
   catch (e) { return fail("Couldn't load the sign-in screen", e); }
   if (!FBX.configured()) return notConfigured();

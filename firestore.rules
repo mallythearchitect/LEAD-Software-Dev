@@ -1,6 +1,6 @@
 rules_version = '2';
 
-/* LEAD Ops Hub — who can read and change what in the team database.
+/* LEAD — who can read and change what in the team database.
    This is the lock. The website is public, so everything that keeps people's data private
    happens here, on Google's servers, no matter what the page does.
 
@@ -47,7 +47,7 @@ service cloud.firestore {
     function contacts() { return ['edits', 'added', 'people', 'board', 'letters']; }
     function work() { return ['tasks', 'due', 'ready', 'proposals', 'meetings']; }
     function owned() { return ['shifts', 'signers']; }
-    function reserved() { return ['access', 'system', 'roster', 'requests', 'ref']; }
+    function reserved() { return ['access', 'system', 'roster', 'requests', 'ref', 'presence', 'directory', 'messages', 'feedback', 'codes']; }
 
     // r is the stored document (resource), which is null when it doesn't exist yet.
     function inMine(r) { return myCenter() != '' && (r.data.center == myCenter() || r.data.center == 'all'); }
@@ -125,9 +125,68 @@ service cloud.firestore {
         && request.resource.data.photo is string && request.resource.data.photo.size() < 2000;
     }
 
-    // The owner's name list (names and levels only).
+    // The owner's name list (names and levels only). The team sees it on Who's who.
     match /roster/{id} {
-      allow read, write: if isOwner();
+      allow read: if isOwner() || live();
+      allow write: if isOwner();
+    }
+
+    // ---------------------------------------------------------------- the team: check-ins, the team list, messages, feedback, codes
+    function teamDoc() { return request.resource.data; }
+    // "I'm in the office today." One record per person, written only by that person.
+    match /presence/{e} {
+      allow read: if isOwner() || live();
+      allow create, update: if signedIn() && live() && e == me()
+        && teamDoc().keys().hasOnly(['email', 'name', 'center', 'date', 'in', 'at'])
+        && teamDoc().email == me() && teamDoc().name is string && teamDoc().name.size() < 200
+        && teamDoc().date is string && teamDoc().date.size() == 10 && teamDoc().in is bool
+        && teamDoc().at == request.time;
+      allow delete: if isOwner() || (signedIn() && e == me());
+    }
+    // Who is on the team, by level and center: each person writes their own line, with the level
+    // the access list gives them (never one they picked).
+    match /directory/{e} {
+      allow read: if isOwner() || live();
+      allow create, update: if signedIn() && live() && e == me()
+        && teamDoc().keys().hasOnly(['email', 'name', 'role', 'center', 'title', 'at'])
+        && teamDoc().email == me() && teamDoc().role == role() && teamDoc().center == myCenter()
+        && teamDoc().name is string && teamDoc().name.size() < 200
+        && teamDoc().title is string && teamDoc().title.size() < 200
+        && teamDoc().at == request.time;
+      allow delete: if isOwner() || (signedIn() && e == me());
+    }
+    // Short messages between teammates. Only the sender and the person it's for can read one.
+    match /messages/{id} {
+      allow read: if signedIn() && (resource.data.from == me() || resource.data.to == me());
+      allow create: if signedIn() && live()
+        && teamDoc().keys().hasOnly(['from', 'fromName', 'to', 'toName', 'text', 'read', 'at'])
+        && teamDoc().from == me() && teamDoc().to is string && teamDoc().to.size() < 200
+        && teamDoc().fromName is string && teamDoc().fromName.size() < 200
+        && teamDoc().toName is string && teamDoc().toName.size() < 200
+        && teamDoc().text is string && teamDoc().text.size() > 0 && teamDoc().text.size() <= 2000
+        && teamDoc().read == false && teamDoc().at == request.time;
+      allow update: if signedIn() && resource.data.to == me()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read']);
+      allow delete: if signedIn() && (resource.data.from == me() || resource.data.to == me());
+    }
+    // Training and demo feedback. Anyone on the team can send it; coordinators, executives and the
+    // owner can read it.
+    match /feedback/{id} {
+      allow read: if isOwner() || (live() && lead());
+      allow create: if signedIn() && live()
+        && teamDoc().keys().hasOnly(['by', 'name', 'role', 'center', 'kind', 'answers', 'at'])
+        && teamDoc().by == me() && teamDoc().kind in ['training', 'demo']
+        && teamDoc().name is string && teamDoc().name.size() < 200
+        && teamDoc().answers is map && teamDoc().at == request.time;
+      allow update: if false;
+      allow delete: if isOwner();
+    }
+    // A center's door, Wi-Fi and computer codes, scrambled with the team password
+    // (tools/make_codes.py). Only people at that center, coordinators and executives can fetch the
+    // scrambled copy; the team password unscrambles it on their screen.
+    match /codes/{center} {
+      allow get: if isOwner() || (live() && (lead() || myCenter() == center));
+      allow list, write: if isOwner();
     }
 
     // Who owns the hub. Claimed once; to hand it over, change it in the Firebase console.
@@ -139,6 +198,12 @@ service cloud.firestore {
     }
     // Which built-in lists are loaded.
     match /system/refindex {
+      allow get: if isOwner() || live();
+      allow write: if isOwner();
+    }
+    // The assistant's key (owner page → Data → Assistant). Readable by the team, so the hub can ask
+    // questions for them; the owner sets a spending cap on it in the Anthropic console.
+    match /system/ai {
       allow get: if isOwner() || live();
       allow write: if isOwner();
     }

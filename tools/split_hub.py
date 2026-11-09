@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Split the single-file LEAD Ops Hub into a team web app plus a private data bundle.
+"""Split the single-file LEAD hub into a team web app plus a private data bundle.
 
     python3 -I tools/split_hub.py "<unlocked hub>.html" <repo dir> <private output dir>
 
@@ -159,7 +159,7 @@ patch("VIEW_ORDER.map(", "(FB?FB.views:VIEW_ORDER).map(", count=n_vo)
 patch("function viewBanner(){return ", 'function viewBanner(){if(FB&&!FB.owner)return "";return ')
 
 # 6. Header: names, sign-offs and center links for the signed-in person, plus the role/center setup.
-HEADER = r'''/* LEAD Ops Hub — team edition.
+HEADER = r'''/* LEAD — team edition.
    This file holds no personal data. People, contacts, signers and saved work load from the
    team database after sign-in (js/gate.js). FB describes the signed-in person; it is null when
    the page runs as a single local file. */
@@ -192,7 +192,29 @@ fbSetupViews();
 start_marker = "/* ============ start ============ */"
 if app.count(start_marker) != 1:
     die("start marker not found")
-app = app.replace(start_marker, FOOTER + "\n" + start_marker)
+TEAM_JS = open(os.path.join(repo, "tools", "team-ui.js"), encoding="utf-8").read()
+app = app.replace(start_marker, FOOTER + "\n" + TEAM_JS + "\n" + start_marker)
+
+# 7. Hooks the team code needs: its own page in the page switch, and meeting times.
+patch("home:rHome,letters:rLetters})[S.tab]();", "home:rHome,letters:rLetters,resources:rResources})[S.tab]();")
+patch('${fmtDate(m.date,true)}${m.with?", with "+esc(m.with):""}', '${fmtDate(m.date,true)}${m.time?" · "+esc(tmClock(m.time)):""}${m.with?", with "+esc(m.with):""}')
+
+# 8. The top bar: the LEAD logo instead of the old name, the saved-status pill out at the edge.
+def mpatch(old, new, regex=False):
+    global markup
+    n = len(re.findall(old, markup)) if regex else markup.count(old)
+    if n != 1:
+        die(f"markup patch expected 1 match, found {n}: {old[:60]!r}")
+    markup = re.sub(old, new, markup) if regex else markup.replace(old, new)
+mpatch(r'<button class="brand" data-tab="home" id="brandBtn" aria-label="[^"]*">\s*<span class="mark" aria-hidden="true">L</span>\s*<span class="brand-txt"><b>[^<]*</b><small>[^<]*</small></span>\s*</button>',
+       '<button class="brand" data-tab="home" id="brandBtn" aria-label="LEAD home"><img class="brand-logo" src="img/lead-wordmark.png" alt="LEAD"><span class="brand-txt"><b>LEAD</b><small></small></span></button>', regex=True)
+mpatch('<path d="M15 18l-6-6 6-6"/></svg><span>Home</span>', '<path d="M15 18l-6-6 6-6"/></svg><img class="home-logo" src="img/lead-wordmark.png" alt=""><span>Home</span>')
+m_status = re.search(r'\n[ \t]*<span class="status"[^\n]*</span>', markup)
+if not m_status:
+    die("status pill not found in the top bar")
+status_html = m_status.group(0).strip()
+markup = markup[:m_status.start()] + markup[m_status.end():]
+mpatch(r'(<button class="theme-toggle"[^\n]*</button>)', lambda m: m.group(1) + "\n    " + status_html, regex=True)
 
 # ---------------------------------------------------------------- safety checks on the public files
 # Only public organisation numbers and addresses may stay in the code; anything else stops the tool.
@@ -219,13 +241,16 @@ with open(os.path.join(repo, "js", "public-data.js"), "w", encoding="utf-8") as 
 BUILD = __import__("time").strftime("%Y%m%d%H%M")   # lets browsers fetch the new code after an update
 GATE_CSS = open(os.path.join(repo, "tools", "gate.css"), encoding="utf-8").read()
 GATE_HTML = open(os.path.join(repo, "tools", "gate.html"), encoding="utf-8").read()
+TEAM_CSS = open(os.path.join(repo, "tools", "team.css"), encoding="utf-8").read()
 page = (
     "<!doctype html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n"
     "<meta name=\"viewport\" content=\"width=device-width,initial-scale=1,viewport-fit=cover\">\n"
-    "<meta name=\"robots\" content=\"noindex,nofollow\">\n<title>LEAD Ops Hub</title>\n"
+    "<meta name=\"robots\" content=\"noindex,nofollow\">\n<title>LEAD</title>\n"
+    "<meta name=\"theme-color\" content=\"#193069\">\n<link rel=\"icon\" href=\"img/favicon.svg\" type=\"image/svg+xml\">\n"
+    "<link rel=\"apple-touch-icon\" href=\"img/apple-touch-icon.png\">\n"
     "<link rel=\"stylesheet\" href=\"https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Instrument+Sans:wght@400;500;600&display=swap\">\n"
     + "".join("<style>" + st + "</style>\n" for st in styles)
-    + "<style>" + GATE_CSS + "</style>\n</head>\n<body>\n"
+    + "<style>" + GATE_CSS + "</style>\n<style>" + TEAM_CSS + "</style>\n</head>\n<body>\n"
     + markup + "\n" + GATE_HTML + "\n"
     + "<script type=\"module\" src=\"js/gate.js?v=" + BUILD + "\"></script>\n</body>\n</html>\n"
 )

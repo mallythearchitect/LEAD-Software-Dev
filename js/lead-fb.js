@@ -1,4 +1,4 @@
-/* LEAD Ops Hub — team edition: the Firebase connection.
+/* LEAD — team edition: the Firebase connection.
    Sign-in (Google or an emailed link), the access list, and a backend for the hub's data
    layer (makeHubDB in lead-core.js). dev/mock-fb.js exports the same functions for testing. */
 import { firebaseConfig } from "./firebase-config.js";
@@ -111,3 +111,24 @@ export async function writeMany(ops, onProgress) {
     if (onProgress) onProgress(i, ops.length);
   }
 }
+
+// ---------------------------------------------------------------- the team: check-ins, the team list, messages, feedback, codes
+// Each of these mirrors a block in firestore.rules; dev/mock-fb.js has the same functions.
+const meEmail = () => String((auth.currentUser && auth.currentUser.email) || "").toLowerCase();
+const ms = t => { const d = toDate(t); return d && !isNaN(d) ? d.getTime() : Date.now(); };
+const rows = sn => sn.docs.map(d => ({ id: d.id, ...d.data(), at: ms(d.data().at) }));
+const watch = (q, cb, onErr) => fs.onSnapshot(q, sn => cb(rows(sn)), onErr || (() => {}));
+export const setPresence = d => fs.setDoc(ref("presence", meEmail()), { ...d, email: meEmail(), at: fs.serverTimestamp() });
+export const watchPresence = (date, cb, onErr) => watch(fs.query(fs.collection(db, "presence"), fs.where("date", "==", date)), cb, onErr);
+export const joinDirectory = d => fs.setDoc(ref("directory", meEmail()), { ...d, email: meEmail(), at: fs.serverTimestamp() });
+export const watchDirectory = (cb, onErr) => watch(fs.collection(db, "directory"), cb, onErr);
+export const sendMessage = (to, toName, text, fromName) =>
+  fs.addDoc(fs.collection(db, "messages"), { from: meEmail(), fromName, to, toName, text, read: false, at: fs.serverTimestamp() });
+export const watchInbox = (cb, onErr) => watch(fs.query(fs.collection(db, "messages"), fs.where("to", "==", meEmail())), cb, onErr);
+export const watchSent = (cb, onErr) => watch(fs.query(fs.collection(db, "messages"), fs.where("from", "==", meEmail())), cb, onErr);
+export const markRead = id => fs.updateDoc(ref("messages", id), { read: true });
+export const sendFeedback = d => fs.addDoc(fs.collection(db, "feedback"), { ...d, by: meEmail(), at: fs.serverTimestamp() });
+export const watchFeedback = (cb, onErr) => watch(fs.collection(db, "feedback"), cb, onErr);
+export async function getCodes(center) { return data(await fs.getDoc(ref("codes", center))); }
+export const listRoster = () => listCol("roster");
+export async function getAI() { return data(await fs.getDoc(ref("system", "ai"))); }

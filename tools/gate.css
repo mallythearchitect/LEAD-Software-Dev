@@ -2,7 +2,10 @@
 .gate{position:fixed;inset:0;z-index:200;display:flex;align-items:center;justify-content:center;padding:24px 16px;overflow:auto;background:radial-gradient(circle at 82% -10%,rgba(121,104,247,.35),transparent 42%),linear-gradient(160deg,#111d37 0%,#17284c 60%,#10203e 100%)}
 .gate[hidden]{display:none!important}
 .gate-card{width:100%;max-width:430px;background:var(--surface);color:var(--ink);border-radius:18px;padding:24px 22px 20px;box-shadow:0 24px 70px rgba(5,10,25,.45);font-family:var(--body)}
-.gate-brand{display:flex;gap:12px;align-items:center;margin-bottom:18px}
+.gate-brand{display:flex;flex-direction:column;gap:6px;align-items:flex-start;margin-bottom:16px}
+.gate-logo{height:72px;width:auto;display:block}
+.gate label.gate-check{display:flex;gap:9px;align-items:center;font-size:14px;font-weight:500;color:var(--ink);margin:12px 0 2px;cursor:pointer}
+.gate label.gate-check input{width:16px;height:16px;accent-color:var(--blue)}
 .gate-mark{width:40px;height:40px;border-radius:11px;display:grid;place-items:center;background:linear-gradient(135deg,#3c78e2,#7968f7);color:#fff;font:800 20px var(--display);flex:none}
 .gate-brand b{font:800 18px var(--display);display:block;line-height:1.1}
 .gate-brand small{color:var(--muted);font-size:12px}
@@ -18,7 +21,7 @@
 .gate-or{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:12px;margin:16px 0 2px}
 .gate-or:before,.gate-or:after{content:"";flex:1;height:1px;background:var(--line)}
 .gate label{display:block;font-size:12px;font-weight:600;color:var(--muted);margin:12px 0 4px}
-.gate input[type=email],.gate input[type=text],.gate select{width:100%;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:var(--surface2);color:var(--ink);font:15px var(--body)}
+.gate input[type=email],.gate input[type=text],.gate input[type=password],.gate select{width:100%;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:var(--surface2);color:var(--ink);font:15px var(--body)}
 .gate-err{color:var(--red);font-size:13px;margin-top:10px}
 .gate-ok{color:var(--green);font-size:13px;margin-top:10px}
 .gate-who{display:flex;gap:10px;align-items:center;padding:10px 12px;border-radius:11px;background:var(--surface2);font-size:14px;margin:12px 0;min-width:0}

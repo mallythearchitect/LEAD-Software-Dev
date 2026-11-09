@@ -1,4 +1,4 @@
-/* LEAD Ops Hub — team edition: the shared rules.
+/* LEAD — team edition: the shared rules.
    Levels, centers, who can read and write what, name matching, and the data layer that
    connects the hub to a database. No Firebase and no personal data in here, so the same
    logic runs against Firebase (lead-fb.js) and the offline test double (dev/mock-fb.js).
@@ -51,7 +51,7 @@ export const CONTACTS = ["edits", "added", "people", "board", "letters"];
 export const WORK = ["tasks", "due", "ready", "proposals", "meetings"];
 export const OWNED = ["shifts", "signers"];           // a trial sees only the ones they logged
 export const LEADS_ONLY = ["meta", "cv"];             // goals and settings: coordinators, executives, the owner
-export const RESERVED = ["access", "system", "roster", "requests", "ref"];
+export const RESERVED = ["access", "system", "roster", "requests", "ref", "presence", "directory", "messages", "feedback", "codes"];
 export const PERSONAL = "ptasks";                     // everyone's own "My role" tasks
 export const PRIVATE_SETTINGS = ["rate", "invoicedThrough", "nextInvoiceNo"];
 export const TIERS = ["core", "canvass", "contacts"];

@@ -90,7 +90,12 @@ export function demoBundle(today = new Date()) {
 
     // work
     TASKS.slice(0, 4 + ci % 3).forEach(([title, section], i) => put("tasks", `${p}-tk${i + 1}`, { title, section, status: pick(["todo", "todo", "doing", "waiting", "done"]), due: iso(addDays(today, i * 2 - 1)), priority: pick(["High", "Medium", "Medium", "Low"]), notes: "", createdAt: t0, repeat: "", dow: 4, doneOn: "", fixed: false, center: c.id }));
-    put("meetings", `${p}-m1`, { title: `${city} team check-in (demo)`, date: iso(addDays(today, -3)), where: `${city} center`, with: "Center team", notes: "Went over the week's events.", takeaways: "Two new tabling spots confirmed.", next: "Next check-in in two weeks", createdAt: t0, center: c.id });
+    put("meetings", `${p}-m1`, { title: `${city} team check-in (demo)`, date: iso(addDays(today, -3)), time: "15:00", where: `${city} center`, with: "Center team", notes: "Went over the week's events.", takeaways: "Two new tabling spots confirmed.", next: "Next check-in in two weeks", createdAt: t0, center: c.id });
+    put("meetings", `${p}-m2`, { title: `${city} coordinator sync (demo)`, date: iso(addDays(today, 1 + ci % 3)), time: ["10:00", "13:30", "16:00"][ci % 3], where: `${city} center`, with: "Coordinator and assistant coordinators", notes: "", takeaways: "", next: "", createdAt: t0, center: c.id });
+    if (c.id === "east-hartford") {
+      put("meetings", `${p}-m3`, { title: "Interval House partnership check-in (demo)", date: t0, time: "14:00", where: "Interval House, Hartford", with: "Community education team", notes: "Agenda: co-hosting a family safety workshop at the center, and flyers for the November calendar.", takeaways: "", next: "Send the November program flyer\nConfirm a workshop date in December", createdAt: t0, center: c.id });
+      put("meetings", `${p}-m4`, { title: "Town hall prep (demo)", date: iso(addDays(today, 5)), time: "18:00", where: "East Hartford Public Library", with: "Volunteers", notes: "", takeaways: "", next: "", createdAt: t0, center: c.id });
+    }
   });
 
   return { kind: "lead-hub-bundle", version: 1, label: "Demo data (made up, all 7 centers)", private: false, tiers, docs };

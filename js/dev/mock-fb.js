@@ -70,6 +70,14 @@ function seed() {
     .forEach(([name, role, center], i) => col("roster").set("r" + i, { name, role, center, notes: "" }));
   [["jrivera@example.org", "Jordan Rivera"], ["chris.unknown@example.org", "Chris Unknown"], ["rosa.d@example.org", "Rosa M. Diaz"]]
     .forEach(([email, googleName]) => col("requests").set(email, { email, googleName, photo: "", at: new Date().toISOString() }));
+  // the team list, a check-in, a welcome message and the demo center codes, to try the assistant
+  const d = new Date(), today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  [["exec@example.org", "Test Executive", "exec", "all"], ["coord@example.org", "Test Coordinator", "coord", "new-britain"], ["asst@example.org", "Test Assistant", "asst", "danbury"],
+   ["canv@example.org", "Test Canvasser", "canv", "east-hartford"], ["jrivera@example.org", "Jordan Rivera", "coord", "new-haven"], ["maya.s@example.org", "Maya Santos", "asst", "waterbury"]]
+    .forEach(([email, name, role, center]) => col("directory").set(email, { email, name, role, center, title: "", at: Date.now() - 864e5 }));
+  col("presence").set("jrivera@example.org", { email: "jrivera@example.org", name: "Jordan Rivera", center: "new-haven", date: today, in: true, at: Date.now() });
+  col("messages").set("m-welcome", { from: "coord@example.org", fromName: "Test Coordinator", to: EMAIL, toName: NAME, text: "Welcome to LEAD. Try asking the assistant when the next meeting is.", read: false, at: Date.now() - 36e5 });
+  col("codes").set("east-hartford", clone(MOCK_CODES));
 }
 function ensurePersona() {
   if (ACC && !col("access").has(EMAIL)) col("access").set(EMAIL, { email: EMAIL, name: NAME, title: "", viewCenters: [], ...ACC });
@@ -213,3 +221,39 @@ export const stamp = () => new Date().toISOString();
 export const when = date => date.toISOString();
 export const toDate = t => (t instanceof Date ? t : typeof t === "string" ? new Date(t) : t && typeof t.toDate === "function" ? t.toDate() : null);
 export const RESERVED_COLLECTIONS = RESERVED;
+
+// ---------------------------------------------------------------- the team: check-ins, the team list, messages, feedback, codes
+// The same functions as lead-fb.js, refusing what firestore.rules would refuse.
+const live = () => { signedIn(); const w = who(); if (!w.owner && !w.role) throw err("you're not on the access list yet"); return w; };
+const isLead = w => w.owner || !!(ROLES[w.role] || {}).lead;
+const tid = p => p + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+function watchCol(c, pick, cb, onErr, need) {
+  const l = { col: c, run: () => {
+    try { if (need) need(); } catch (e) { listeners.delete(l); if (onErr) onErr(e); return; }
+    cb([...col(c)].map(([id, d]) => ({ id, ...clone(d) })).filter(pick));
+  } };
+  listeners.add(l); later(l.run); return () => listeners.delete(l);
+}
+export async function setPresence(d) { const w = live(); col("presence").set(w.email, { ...clone(d), email: w.email, at: Date.now() }); changed("presence"); }
+export const watchPresence = (date, cb, onErr) => watchCol("presence", p => p.date === date, cb, onErr, live);
+export async function joinDirectory(d) {
+  const w = live(), a = col("access").get(w.email) || {};
+  if (d.role !== a.role || (d.center || "") !== (a.center || "")) throw err("the team list takes the level and center from the access list");
+  col("directory").set(w.email, { ...clone(d), email: w.email, at: Date.now() }); changed("directory");
+}
+export const watchDirectory = (cb, onErr) => watchCol("directory", () => true, cb, onErr, live);
+export async function sendMessage(to, toName, text, fromName) {
+  const w = live();
+  if (!text || text.length > 2000) throw err("a message is 1 to 2000 characters", "invalid-argument");
+  col("messages").set(tid("m"), { from: w.email, fromName, to, toName, text, read: false, at: Date.now() }); changed("messages");
+}
+export const watchInbox = (cb, onErr) => watchCol("messages", m => !!user && m.to === user.email, cb, onErr, signedIn);
+export const watchSent = (cb, onErr) => watchCol("messages", m => !!user && m.from === user.email, cb, onErr, signedIn);
+export async function markRead(id) { signedIn(); const m = col("messages").get(id); if (!m || m.to !== user.email) throw err("only the person a message is for can mark it read"); m.read = true; changed("messages"); }
+export async function sendFeedback(d) { const w = live(); col("feedback").set(tid("f"), { ...clone(d), by: w.email, at: Date.now() }); changed("feedback"); }
+export const watchFeedback = (cb, onErr) => watchCol("feedback", () => true, cb, onErr, () => { if (!isLead(live())) throw err("only coordinators, executives and the owner can read feedback"); });
+export async function getCodes(center) { const w = live(); if (!(isLead(w) || w.center === center)) throw err("codes for another center aren't open to you"); return clone(col("codes").get(center)) || null; }
+export async function listRoster() { live(); return [...col("roster")].map(([id, d]) => ({ id, ...clone(d) })); }
+export async function getAI() { live(); return clone(col("system").get("ai")) || null; }
+// Demo codes (door 0000, Wi-Fi demo-wifi, laptop demo-laptop, cart demo-cart), scrambled with the team password.
+const MOCK_CODES = {"v": 1, "center": "east-hartford", "salt": "BFQZke1Av9RcsZo/cPALhg==", "iv": "+GKM0Y0td+pIVvEz", "ct": "MTFYP9P5TgmOjZ1T6eunxyr03picss7AMJJQxxY7JLm5EPKBSdR8MUD1U3auooTvLsvdgeOjnMWSuW2HKrOs1YiTwRnODMW5dYNAmLEAiyGqSOq81Q9flpuu42om+iHz", "it": 600000, "fields": ["door", "wifi", "mac", "cart"], "at": "2026-11-09"};

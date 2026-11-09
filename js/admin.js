@@ -1,9 +1,10 @@
-/* LEAD Ops Hub — owner page.
+/* LEAD — owner page.
    Let people in (with a suggestion from the name list), set each person's level and center, keep
    the name list, and load or remove data sets. Only the hub's owner can use it; firestore.rules
    refuses everyone else, so this page is a convenience, not the lock. */
 import { CENTERS, ROLES, ROLE_ORDER, roleLabel, centerName, PAGES, TRIAL_DAYS, rosterMatches, nameScore, bundleOps, unbundleOps, refId, SCOPED, ORGWIDE, PERSONAL } from "./lead-core.js";
 import { demoBundle } from "./demo-data.js";
+import { isUnlocked, lockAgain } from "./lock.js";
 
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
@@ -17,7 +18,7 @@ const DEFAULT_PAGES = ["today", "events", "playbook"];
 const STRONG = 0.85;
 const TITLED = ["exec", "coord", "asst", "canv"];
 let FBX, me = null, current;
-const S = { tab: "wait", requests: [], access: [], roster: [], index: { sets: {} }, file: null, busy: false };
+const S = { tab: "wait", requests: [], access: [], roster: [], index: { sets: {} }, file: null, busy: false, codes: [], ai: null };
 try { const t = localStorage.getItem("lead_hub_theme"); if (t) document.documentElement.dataset.theme = t; } catch (e) { /* none saved */ }
 
 // ---------------------------------------------------------------- helpers
@@ -138,7 +139,9 @@ function notOwnerCard(owner) {
 
 // ---------------------------------------------------------------- owner view
 async function loadAll() {
-  const [requests, access, roster, index] = await Promise.all([FBX.listCol("requests"), FBX.listCol("access"), FBX.listCol("roster"), FBX.getRefIndex()]);
+  const [requests, access, roster, index, codes, ai] = await Promise.all([FBX.listCol("requests"), FBX.listCol("access"), FBX.listCol("roster"), FBX.getRefIndex(),
+    FBX.listCol("codes").catch(() => []), FBX.getAI().catch(() => null)]);
+  S.codes = codes.map(c => c.id); S.ai = ai;
   const has = new Set(access.map(a => a.id));
   S.requests = requests.filter(r => !has.has(r.id)).sort((a, b) => (toDate(b.at) || 0) - (toDate(a.at) || 0));
   requests.filter(r => has.has(r.id)).forEach(r => FBX.delRaw("requests", r.id).catch(() => {}));   // already let in
@@ -298,6 +301,14 @@ function paneData() {
         ${demo && f.label !== DEMO_LABEL ? `<label class="row small" style="margin-bottom:10px"><input type="checkbox" id="dropDemo" checked> Take out the demo data first</label>` : ""}
         <div class="row"><button class="btn pri" data-act="file-load">Load it</button><button class="btn" data-act="file-clear">Cancel</button></div></div>` : ""}
     </div>
+    <div class="card"><h2>Center codes</h2>
+      <p class="small muted">The door, Wi-Fi and computer codes a center's keyholders see on the Calendar page, scrambled with the team password. Make the line on your computer with <code>python3 -I tools/make_codes.py &lt;center&gt;</code>, then paste it here. ${S.codes.length ? "Loaded for: " + S.codes.map(centerName).join(", ") + "." : "None loaded yet."}</p>
+      <textarea id="codesBox" rows="3" placeholder='{"v":1,"center":"east-hartford", …}' style="min-height:64px"></textarea>
+      <div class="row" style="margin-top:8px"><button class="btn pri" data-act="codes-save">Save the codes</button></div></div>
+    <div class="card"><h2>Assistant (Ask LEAD)</h2>
+      <p class="small muted">An Anthropic API key lets the assistant in the corner reason over the hub's data (<b>/inquiry</b>). It always uses Claude Sonnet (<code>claude-sonnet-5-5</code>). The key is kept in the team database, never in the website's code, and only people you've let in can use it. <b>Set a monthly spending limit on the key</b> at console.anthropic.com → Settings → Limits before you paste it. ${S.ai ? `Connected${S.ai.at ? " · added " + esc(ago(S.ai.at)) : ""}.` : "Not connected yet."}</p>
+      <label class="f" for="aiKey">API key</label><input type="password" id="aiKey" autocomplete="off" placeholder="sk-ant-…">
+      <div class="row" style="margin-top:8px"><button class="btn pri" data-act="ai-save">Save the key</button>${S.ai ? `<button class="btn warn" data-act="ai-remove">Disconnect</button>` : ""}</div></div>
     <div class="card"><h2>Backup</h2><p class="small muted">Downloads everything in the team database as one file: people, saved work and lists. It has private details, so keep it somewhere safe.</p>
       <button class="btn" data-act="backup">Download a full backup</button></div>`;
 }
@@ -320,7 +331,7 @@ function removeSetsOps(label) {
 // ---------------------------------------------------------------- actions
 const ACTIONS = {
   async google() { try { await FBX.signInGoogle(); } catch (e) { toast(e.message || String(e)); } },
-  async signout() { await FBX.signOut(); location.replace("./" + keep()); },
+  async signout() { lockAgain(); await FBX.signOut(); location.replace("./" + keep()); },
   async refresh() { await refresh(); toast("Up to date"); },
   async claim() {
     const name = $("#cName").value.trim(), center = $("#cCenter").value;
@@ -398,6 +409,23 @@ const ACTIONS = {
     S.file = null; await refresh();
   },
   async "file-clear"() { S.file = null; render(); },
+  async "codes-save"() {
+    let j;
+    try { j = JSON.parse($("#codesBox").value.trim()); } catch (e) { return toast("That isn't the line make_codes.py printed. Paste the whole line."); }
+    if (!(j && j.v === 1 && CENTERS.some(c => c.id === j.center) && j.salt && j.iv && j.ct)) return toast("That line is missing pieces. Make it again with make_codes.py.");
+    await FBX.setRaw("codes", j.center, { ...j, by: me.email, at: FBX.stamp() });
+    $("#codesBox").value = ""; toast(`Codes saved for ${centerName(j.center)}`); await refresh();
+  },
+  async "ai-save"() {
+    const key = $("#aiKey").value.trim();
+    if (!/^sk-ant-[\w-]{20,}$/.test(key)) return toast("That doesn't look like an Anthropic API key (they start with sk-ant-).");
+    await FBX.setRaw("system", "ai", { key, model: "claude-sonnet-5-5", by: me.email, at: FBX.stamp() });
+    $("#aiKey").value = ""; toast("The assistant is connected"); await refresh();
+  },
+  async "ai-remove"() {
+    if (!confirm("Disconnect the assistant? People can still search the hub; /inquiry stops working until a key is added again.")) return;
+    await FBX.delRaw("system", "ai"); toast("Disconnected"); await refresh();
+  },
   async backup() {
     const cols = [...new Set([...SCOPED, ...ORGWIDE, PERSONAL, "hours", "log", "private", "access", "roster", "requests", "system", "ref"])];
     const out = { kind: "lead-hub-backup", made: new Date().toISOString(), by: me.email, collections: {} };
@@ -458,6 +486,8 @@ async function route() {
   catch (e) { console.error(e); main(`<div class="card"><h2>Couldn't load the owner page</h2><p class="muted">${esc(denied(e))}</p><button class="btn pri" onclick="location.reload()">Try again</button></div>`); }
 }
 async function start() {
+  // The team password is typed on the hub's front page; come back here after.
+  if (!(await isUnlocked())) { location.replace("./" + keep()); return; }
   $("#backLink").href = "./" + keep();
   $("#outBtn").onclick = () => ACTIONS.signout();
   try { FBX = await import(OFFLINE ? "./dev/mock-fb.js" : "./lead-fb.js"); }
