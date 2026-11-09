@@ -47,7 +47,7 @@ service cloud.firestore {
     function contacts() { return ['edits', 'added', 'people', 'board', 'letters']; }
     function work() { return ['tasks', 'due', 'ready', 'proposals', 'meetings']; }
     function owned() { return ['shifts', 'signers']; }
-    function reserved() { return ['access', 'system', 'roster', 'requests', 'ref', 'presence', 'directory', 'messages', 'feedback', 'codes']; }
+    function reserved() { return ['access', 'system', 'roster', 'requests', 'ref', 'presence', 'directory', 'messages', 'feedback', 'codes', 'activity']; }
 
     // r is the stored document (resource), which is null when it doesn't exist yet.
     function inMine(r) { return myCenter() != '' && (r.data.center == myCenter() || r.data.center == 'all'); }
@@ -178,6 +178,19 @@ service cloud.firestore {
         && teamDoc().by == me() && teamDoc().kind in ['training', 'demo']
         && teamDoc().name is string && teamDoc().name.size() < 200
         && teamDoc().answers is map && teamDoc().at == request.time;
+      allow update: if false;
+      allow delete: if isOwner();
+    }
+    // A light activity feed ("checked in", "moved a card to Done", "added a meeting"): short lines,
+    // written by the person they're about, readable by the team.
+    match /activity/{id} {
+      allow read: if isOwner() || live();
+      allow create: if signedIn() && live()
+        && teamDoc().keys().hasOnly(['by', 'name', 'center', 'kind', 'text', 'at'])
+        && teamDoc().by == me() && teamDoc().name is string && teamDoc().name.size() < 200
+        && teamDoc().kind is string && teamDoc().kind.size() < 40
+        && teamDoc().text is string && teamDoc().text.size() <= 300
+        && teamDoc().at == request.time;
       allow update: if false;
       allow delete: if isOwner();
     }

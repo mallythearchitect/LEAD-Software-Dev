@@ -1748,9 +1748,9 @@ button.th-m:hover,button.th-m:focus-visible{border-color:var(--tc)}
 .ask-panel{position:fixed;right:max(16px,env(safe-area-inset-right,0px));bottom:max(16px,env(safe-area-inset-bottom,0px));z-index:46;width:min(410px,calc(100vw - 24px));height:min(620px,calc(100vh - 90px));background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:18px;box-shadow:var(--shadow);display:flex;flex-direction:column;overflow:hidden}
 .ask-panel[hidden]{display:none}
 .ask-h{display:flex;align-items:center;gap:10px;padding:10px 10px 10px 14px;border-bottom:1px solid var(--line);background:var(--surface2)}
-.ask-h>b{font:800 16px var(--display)}
+.ask-h>b{font:800 15px var(--display);white-space:nowrap}
 .ask-tabs{display:flex;gap:2px;margin-left:auto}
-.ask-tabs button{background:none;border:0;border-radius:8px;padding:5px 9px;cursor:pointer;font-size:13px;font-weight:600;color:var(--muted)}
+.ask-tabs button{background:none;border:0;border-radius:8px;padding:5px 7px;cursor:pointer;font-size:12.5px;font-weight:600;color:var(--muted);white-space:nowrap}
 .ask-tabs button[aria-selected="true"]{background:var(--surface);color:var(--ink)}
 .ask-tabs i{font-style:normal;background:var(--lead-orange);color:#fff;border-radius:999px;padding:0 6px;font-size:11px}
 .ask-x{background:none;border:0;font-size:22px;line-height:1;cursor:pointer;color:var(--muted);padding:2px 6px;border-radius:8px}
@@ -1777,6 +1777,11 @@ button.th-m:hover,button.th-m:focus-visible{border-color:var(--tc)}
 .ask-msg.out{background:var(--surface2)}
 .ask-msg .w{font-size:12px;color:var(--muted);margin-bottom:3px}
 .ask-msg .t{white-space:pre-wrap;overflow-wrap:anywhere}
+.ask-msg.act{border-color:var(--line2);padding:7px 10px}
+.ask-msg.act .w{display:flex;align-items:center;gap:7px;margin-bottom:2px}
+.ask-msg.act .w b{color:var(--ink)}
+.act-av{width:22px;height:22px;font-size:9px}
+.act-av .tw-dot{width:9px;height:9px;border-width:1px}
 
 /* ---------- smaller screens ---------- */
 @media (max-width:1240px){
@@ -1873,6 +1878,6 @@ button.th-m:hover,button.th-m:focus-visible{border-color:var(--tc)}
   </div>
 </div>
 <noscript><p style="padding:24px;font:16px system-ui">LEAD needs JavaScript turned on.</p></noscript>
-<script type="module" src="js/gate.js?v=202611090131"></script>
+<script type="module" src="js/gate.js?v=202611090157"></script>
 </body>
 </html>

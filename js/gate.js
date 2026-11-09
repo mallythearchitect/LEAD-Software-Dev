@@ -267,6 +267,8 @@ function teamApi(u, acc, isOwner) {
     getCodes: c => FBX.getCodes(c),
     listRoster: () => FBX.listRoster(),
     getAI: () => (FBX.getAI ? FBX.getAI() : Promise.resolve(null)),
+    logActivity: d => (FBX.logActivity ? FBX.logActivity({ ...d, name, center }) : Promise.resolve()),
+    watchActivity: cb => (FBX.watchActivity ? FBX.watchActivity(cb, warn("activity")) : () => {}),
     setCenter: c => FBX.updateMyAccess(u.email, { center: c }),
     setViewCenters: list => FBX.updateMyAccess(u.email, { viewCenters: list }),
   };

@@ -78,6 +78,8 @@ function seed() {
   col("presence").set("jrivera@example.org", { email: "jrivera@example.org", name: "Jordan Rivera", center: "new-haven", date: today, in: true, at: Date.now() });
   col("messages").set("m-welcome", { from: "coord@example.org", fromName: "Test Coordinator", to: EMAIL, toName: NAME, text: "Welcome to LEAD. Try asking the assistant when the next meeting is.", read: false, at: Date.now() - 36e5 });
   col("codes").set("east-hartford", clone(MOCK_CODES));
+  [["coord@example.org", "Test Coordinator", "new-britain", "checkin", "checked in at the office", 50], ["jrivera@example.org", "Jordan Rivera", "new-haven", "task", "moved \"Order more clipboards and pens\" to Done", 130], ["asst@example.org", "Test Assistant", "danbury", "meeting", "added the meeting \"Danbury coordinator sync (demo)\"", 400]]
+    .forEach(([email, name, center, kind, text, min], i) => col("activity").set("a-seed" + i, { by: email, name, center, kind, text, at: Date.now() - min * 60000 }));
 }
 function ensurePersona() {
   if (ACC && !col("access").has(EMAIL)) col("access").set(EMAIL, { email: EMAIL, name: NAME, title: "", viewCenters: [], ...ACC });
@@ -254,6 +256,8 @@ export async function sendFeedback(d) { const w = live(); col("feedback").set(ti
 export const watchFeedback = (cb, onErr) => watchCol("feedback", () => true, cb, onErr, () => { if (!isLead(live())) throw err("only coordinators, executives and the owner can read feedback"); });
 export async function getCodes(center) { const w = live(); if (!(isLead(w) || w.center === center)) throw err("codes for another center aren't open to you"); return clone(col("codes").get(center)) || null; }
 export async function listRoster() { live(); return [...col("roster")].map(([id, d]) => ({ id, ...clone(d) })); }
+export async function logActivity(d) { const w = live(); if (!d.text || d.text.length > 300) throw err("an activity line is 1 to 300 characters", "invalid-argument"); col("activity").set(tid("a"), { ...clone(d), by: w.email, at: Date.now() }); changed("activity"); }
+export const watchActivity = (cb, onErr) => watchCol("activity", () => true, L => cb(L.sort((a, b) => b.at - a.at).slice(0, 40)), onErr, live);
 export async function getAI() { live(); return clone(col("system").get("ai")) || null; }
 // Demo codes (door 0000, Wi-Fi demo-wifi, laptop demo-laptop, cart demo-cart), scrambled with the team password.
 const MOCK_CODES = {"v": 1, "center": "east-hartford", "salt": "BFQZke1Av9RcsZo/cPALhg==", "iv": "+GKM0Y0td+pIVvEz", "ct": "MTFYP9P5TgmOjZ1T6eunxyr03picss7AMJJQxxY7JLm5EPKBSdR8MUD1U3auooTvLsvdgeOjnMWSuW2HKrOs1YiTwRnODMW5dYNAmLEAiyGqSOq81Q9flpuu42om+iHz", "it": 600000, "fields": ["door", "wifi", "mac", "cart"], "at": "2026-11-09"};

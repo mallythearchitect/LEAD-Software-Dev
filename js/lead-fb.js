@@ -131,4 +131,6 @@ export const sendFeedback = d => fs.addDoc(fs.collection(db, "feedback"), { ...d
 export const watchFeedback = (cb, onErr) => watch(fs.collection(db, "feedback"), cb, onErr);
 export async function getCodes(center) { return data(await fs.getDoc(ref("codes", center))); }
 export const listRoster = () => listCol("roster");
+export const logActivity = d => fs.addDoc(fs.collection(db, "activity"), { ...d, by: meEmail(), at: fs.serverTimestamp() });
+export const watchActivity = (cb, onErr) => watch(fs.query(fs.collection(db, "activity"), fs.orderBy("at", "desc"), fs.limit(40)), cb, onErr);
 export async function getAI() { return data(await fs.getDoc(ref("system", "ai"))); }

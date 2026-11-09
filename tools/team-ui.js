@@ -28,7 +28,7 @@ const TM_SOCIAL=[["Website","https://ctlead.org/"],["Facebook","https://www.face
 const TM_PHONES=[["LEAD office","(860) 206-5495"],["LEAD center","(860) 519-7470"]];
 const TM_ROLE_LABEL={exec:"Executive",coord:"Coordinator",asst:"Assistant Coordinator",special:"Special Assignment",canv:"Canvasser",trial:"Trial"};
 const TM_LEVELS=[["exec","Executives","gold"],["coord","Coordinators","orange"],["asst","Assistant Coordinators","blue"],["special","Special Assignment","green"],["canv","Canvassers","slate"],["trial","Trial","slate"]];
-const TM={presence:[],directory:[],inbox:[],sent:[],feedback:[],roster:null,ready:false,askOpen:false,askTab:"ask",thread:[],to:null,ai:undefined};
+const TM={presence:[],directory:[],inbox:[],sent:[],feedback:[],activity:[],roster:null,ready:false,askOpen:false,askTab:"ask",thread:[],to:null,ai:undefined};
 
 const tmLeadish=()=>!FB||FB.owner||["exec","coord"].includes(FB.role);
 const tmX=()=>(FB&&FB.x)||null;
@@ -126,7 +126,7 @@ function tmInToday(){const t0=todayISO();let L=TM.presence.filter(p=>p.date===t0
 const tmAmIn=()=>TM.presence.some(p=>p.id===tmMe()&&p.date===todayISO()&&p.in);
 async function tmCheckIn(on){
   const x=tmX();if(!x){toast("Checking in works on the team site.");return;}
-  try{await x.setPresence(on);toast(on?"Checked in. Your team can see you're in today.":"Checked out.");}
+  try{await x.setPresence(on);toast(on?"Checked in. Your team can see you're in today.":"Checked out.");tmLog("checkin",on?"checked in at the office":"checked out");}
   catch(e){toast("Couldn't check in: "+((e&&e.code)==="permission-denied"?"the database isn't set up for check-ins yet.":(e&&e.message)||e));}
 }
 function tmRepaint(){if(TM.ready&&["home","resources","org"].includes(S.tab)){if($("#overlay").innerHTML.trim())TM.dirty=true;else render();}tmAskPaint();}
@@ -137,12 +137,15 @@ function tmRepaint(){if(TM.ready&&["home","resources","org"].includes(S.tab)){if
   try{x.watchInbox(L=>{TM.inbox=L;tmAskPaint();});}catch(e){console.warn("[hub] messages",e);}
   try{x.watchSent(L=>{TM.sent=L;tmAskPaint();});}catch(e){console.warn("[hub] messages",e);}
   if(x.watchFeedback){try{x.watchFeedback(L=>{TM.feedback=L;tmRepaint();});}catch(e){console.warn("[hub] feedback",e);}}
+  try{x.watchActivity(L=>{TM.activity=L;tmAskPaint();});}catch(e){console.warn("[hub] activity",e);}
   try{x.joinDirectory().catch(e=>console.warn("[hub] team list entry",e&&e.code||e));}catch(e){}
   // a quiet heartbeat while the tab is open, so teammates can see who's active (like a green dot)
   const beat=()=>{if(document.visibilityState==="visible"){try{x.joinDirectory().catch(()=>{});}catch(e){}}};
   setInterval(beat,4*60*1000);document.addEventListener("visibilitychange",beat);
   try{x.listRoster().then(L=>{TM.roster=L||[];tmRepaint();}).catch(e=>{TM.roster=[];console.warn("[hub] name list",e&&e.code||e);});}catch(e){TM.roster=[];}
 })();
+/* One line in the team's activity feed. Short, no details that shouldn't travel. */
+function tmLog(kind,text){const x=tmX();if(!x||!x.logActivity)return;try{x.logActivity({kind,text:String(text).slice(0,300)}).catch(()=>{});}catch(e){}}
 const tmActive=p=>!!(p&&p.at&&Date.now()-p.at<10*60*1000);
 function tmSeen(p){if(!p||!p.at)return "";const m=Math.round((Date.now()-p.at)/60000);if(m<10)return "active now";if(m<60)return `seen ${m} min ago`;const h=Math.round(m/60);if(h<24)return `seen ${h} hr ago`;return "seen "+new Date(p.at).toLocaleDateString([],{month:"short",day:"numeric"});}
 const tmDot=p=>`<i class="tw-dot ${tmActive(p)?"on":""}" title="${esc(tmSeen(p))}"></i>`;
@@ -256,7 +259,7 @@ function tmCampaign(){
   return `${tmTodayPanel()}
   <div class="th-secs2">${TM_SECTIONS.map(tmSectionBlock).join("")}</div>
   ${tmWeek()}
-  <div class="th-two">${tmMeetingsBlock(false)}${tmDoNowBlock(5)}</div>`;
+  <div class="th-two">${tmMeetingsBlock(false)}${tmDoNowBlock(3)}</div>`;
 }
 function tmRole(){
   const t0=todayISO(),ws=weekStart(),we=addDays(ws,6),up=tabOK("meetings")?tmUpcoming():[];
@@ -447,7 +450,7 @@ go=function(tab,keep){if(tab!=="center")S.cal.codes=null;return tmGo(tab,keep);}
 meetingForm=function(m){const isNew=!m;m=m||{};
   form({title:isNew?"New meeting":"Edit meeting",fields:[{key:"title",label:"What it is",required:true,wide:true},{key:"date",label:"Date",type:"date",default:todayISO()},{key:"time",label:"Time",placeholder:"2:00 PM"},{key:"mine",label:"Whose",type:"select",options:[["","The team's"],["1","Mine"]]},{key:"with",label:"With"},{key:"where",label:"Where",wide:true},{key:"notes",label:"Notes",type:"textarea",rows:5,wide:true},{key:"takeaways",label:"Takeaways (one per line)",type:"textarea",rows:3,wide:true},{key:"next",label:"Next steps (one per line)",type:"textarea",rows:3,wide:true}],
     values:{...m,mine:m.mine?"1":""},
-    onSave:async v=>write("meetings",m.id||uid("m"),{...m,...v,mine:v.mine==="1",by:m.by||tmMe(),createdAt:m.createdAt||todayISO()}),onDelete:isNew?null:()=>remove("meetings",m.id)});};
+    onSave:async v=>{const ok=await write("meetings",m.id||uid("m"),{...m,...v,mine:v.mine==="1",by:m.by||tmMe(),createdAt:m.createdAt||todayISO()});if(ok)tmLog("meeting",`${isNew?"added":"updated"} the meeting "${v.title}"${v.date?" for "+fmtDate(v.date):""}`);return ok;},onDelete:isNew?null:()=>remove("meetings",m.id)});};
 
 /* ---------- the project board (Do now → pop-up) ---------- */
 S.pm={focus:"",back:false};
@@ -470,7 +473,7 @@ function tmBoard(focus){
   const b=ov.querySelector(".pm-board");if(b)b.scrollLeft=keepScroll;
   $("#modal").addEventListener("click",e=>{if(e.target.id==="modal")closeOverlay();});
   ov.querySelectorAll("[data-close]").forEach(x=>x.addEventListener("click",closeOverlay));
-  const move=async(id,to)=>{const t=S.tasks.find(x=>x.id===id);if(!t||!to||t.status===to)return;S.pm.focus=id;const ok=await write("tasks",id,{...t,status:to,doneAt:to==="done"?todayISO():""});if(ok)tmBoard();};
+  const move=async(id,to)=>{const t=S.tasks.find(x=>x.id===id);if(!t||!to||t.status===to)return;S.pm.focus=id;const ok=await write("tasks",id,{...t,status:to,doneAt:to==="done"?todayISO():""});if(ok){tmLog("task",`moved "${t.title}" to ${(TSTATUS.find(s=>s[0]===to)||[])[1]||to}`);tmBoard();}};
   ov.querySelectorAll(".pm-card").forEach(c=>{
     c.addEventListener("dragstart",e=>{c.classList.add("dragging");e.dataTransfer.setData("text/plain",c.dataset.pmid);e.dataTransfer.effectAllowed="move";});
     c.addEventListener("dragend",()=>c.classList.remove("dragging"));
@@ -488,7 +491,7 @@ function tmBoard(focus){
     const it=tmDoNow().find(y=>y.kind===x.dataset.k&&String(y.id)===x.dataset.id);if(!it)return;
     if(x.dataset.pmo==="open"){closeOverlay();tmOpenItem(it);return;}
     const ok=await write("tasks",uid("tk"),{title:it.n,section:"Other",status:"todo",due:it.date||"",priority:"Medium",repeat:"",dow:4,waitingOn:"",linkText:it.kind==="follow"||it.kind==="report"?it.n:"",subtasks:[],notes:it.d||"",doneOn:"",createdAt:todayISO(),doneAt:""});
-    if(ok){toast("On the board");tmBoard();}
+    if(ok){toast("On the board");tmLog("task",`put "${it.n}" on the board`);tmBoard();}
   }));
   const f=ov.querySelector(".pm-card.focus");if(f)f.scrollIntoView({block:"nearest",inline:"center"});
 }
@@ -586,7 +589,7 @@ function tmFeedback(kind){
     if(!Object.keys(answers).length){toast("Answer at least one question");return;}
     const x=tmX();if(!x){toast("Feedback is saved on the team site.");return;}
     const b=$("#fbSend");b.disabled=true;b.textContent="Sending…";
-    try{await x.sendFeedback({kind,name,answers});closeOverlay();toast("Thank you. Your feedback is in.");tmSay("bot","Thanks, your feedback went through.");}
+    try{await x.sendFeedback({kind,name,answers});closeOverlay();toast("Thank you. Your feedback is in.");tmSay("bot","Thanks, your feedback went through.");tmLog("feedback",`sent ${kind==="demo"?"software demo":"training"} feedback`);}
     catch(e){b.disabled=false;b.textContent="Send feedback";toast("Couldn't send: "+((e&&e.code)==="permission-denied"?"the database isn't set up for feedback yet.":(e&&e.message)||e));}
   };
 }
@@ -621,10 +624,11 @@ function tmAskPaint(){
   const n=$("#askN");if(n){const u=tmUnread();n.hidden=!u;n.textContent=u;}
   const p=$("#askPanel");if(!p||p.hidden)return;
   const tab=TM.askTab,u=tmUnread();
-  const head=`<div class="ask-h"><b>Ask LEAD</b><div class="ask-tabs" role="tablist"><button role="tab" aria-selected="${tab==="ask"}" data-ask-tab="ask">Assistant</button>${tmX()?`<button role="tab" aria-selected="${tab==="msgs"}" data-ask-tab="msgs">Messages${u?` <i>${u}</i>`:""}</button>`:""}</div><button class="ask-x" data-ask-min aria-label="${TM.askMin?"Expand":"Minimize"}" title="${TM.askMin?"Expand":"Minimize"}">${TM.askMin?"▴":"▾"}</button><button class="ask-x" data-ask-close aria-label="Close">×</button></div>`;
+  const head=`<div class="ask-h"><b>Ask LEAD</b><div class="ask-tabs" role="tablist"><button role="tab" aria-selected="${tab==="ask"}" data-ask-tab="ask">Assistant</button>${tmX()?`<button role="tab" aria-selected="${tab==="msgs"}" data-ask-tab="msgs">Messages${u?` <i>${u}</i>`:""}</button><button role="tab" aria-selected="${tab==="act"}" data-ask-tab="act">Activity</button>`:""}</div><button class="ask-x" data-ask-min aria-label="${TM.askMin?"Expand":"Minimize"}" title="${TM.askMin?"Expand":"Minimize"}">${TM.askMin?"▴":"▾"}</button><button class="ask-x" data-ask-close aria-label="Close">×</button></div>`;
   p.classList.toggle("min",!!TM.askMin);
   let body;
   if(tab==="msgs")body=tmAskMsgs();
+  else if(tab==="act")body=tmAskActivity();
   else body=`<div class="ask-log" id="askLog" aria-live="polite">${TM.thread.map(m=>`<div class="ask-m ${m.who}">${m.html}</div>`).join("")}</div>
     <div class="ask-quick">${TM_QUICK.filter(([k])=>tmX()||!(k.startsWith("msg")||k==="feedback")).map(([k,l])=>`<button data-ask-q="${k}">${esc(l)}</button>`).join("")}</div>
     <form class="ask-f" id="askF"><input id="askIn" autocomplete="off" placeholder="${TM.to?"Message for "+esc(TM.to.name)+"…":"Ask a question, search, or type /help"}" aria-label="Ask LEAD"><button class="btn pri sm" type="submit">${TM.to?"Send":"Go"}</button></form>
@@ -651,6 +655,17 @@ function tmAskMsgs(){
   const when=t=>{if(!t)return "";const d=new Date(t);return d.toLocaleDateString([],{month:"short",day:"numeric"})+" "+d.toLocaleTimeString([],{hour:"numeric",minute:"2-digit"});};
   return `<div class="ask-log ask-inbox">${all.map(m=>`<div class="ask-msg ${m._in?"in":"out"} ${m._in&&!m.read?"new":""}"><div class="w">${m._in?"From <b>"+esc(m.fromName||m.from)+"</b>":"To <b>"+esc(m.toName||m.to)+"</b>"} · ${esc(when(m.at))}</div><div class="t">${esc(m.text)}</div>${m._in?`<button class="linkbtn" data-ask-reply="${esc(m.id)}">Reply</button>`:""}</div>`).join("")||`<p class="muted small" style="padding:10px">No messages yet. Messages you send and get show here.</p>`}</div>
     <div class="ask-quick">${["msg-coord","msg-exec","msg-any"].map(k=>`<button data-ask-q="${k}">${esc(TM_QUICK.find(q=>q[0]===k)[1])}</button>`).join("")}</div>`;
+}
+function tmAskActivity(){
+  const L=[...TM.activity].sort((a,b)=>(b.at||0)-(a.at||0)).slice(0,40);
+  const when=t=>{if(!t)return "";const m=Math.round((Date.now()-t)/60000);if(m<1)return "just now";if(m<60)return m+" min ago";const h=Math.round(m/60);if(h<24)return h+" hr ago";return new Date(t).toLocaleDateString([],{month:"short",day:"numeric"});};
+  const dot=p=>{const d=TM.directory.find(x=>x.id===p.by)||(p.by===tmMe()&&FB?{at:Date.now()}:null);return d?tmDot(d):"";};
+  const inn=tmInToday();
+  return `<div class="ask-log ask-inbox">
+    <div class="ask-msg out"><div class="w">In the office today</div><div class="t">${inn.length?esc(inn.map(p=>p.name).join(", ")):"Nobody has checked in yet."}</div></div>
+    ${L.map(a=>`<div class="ask-msg act"><div class="w"><span class="tw-av act-av">${esc(tmInitials(a.name))}${dot(a)}</span><b>${esc(a.by===tmMe()?"You":(a.name||""))}</b> · ${esc(when(a.at))}${a.center?" · "+esc(tmCenterName(a.center)):""}</div><div class="t">${esc(a.text)}</div></div>`).join("")||`<p class="muted small" style="padding:10px">Nothing yet. Check-ins, cards moved on the board, meetings added, messages and feedback show up here.</p>`}
+  </div>
+  <div class="ask-quick"><button data-ask-ci="${tmAmIn()?"0":"1"}">${tmAmIn()?"Check me out":"Check me in"}</button><button data-ask-q="whoin">Who's in?</button></div>`;
 }
 async function tmMarkRead(){const x=tmX();if(!x)return;for(const m of TM.inbox.filter(m=>!m.read)){try{await x.markRead(m.id);}catch(e){}}}
 function tmPeoplePick(role,label){
@@ -679,7 +694,7 @@ function tmAnswer(k){
 }
 async function tmSend(to,text){
   const x=tmX();if(!x)return tmSay("bot","Messages work on the team site.");
-  try{await x.sendMessage(to,text);tmSay("bot",`Sent to <b>${esc(to.name)}</b>. They'll see it in Messages next time they open LEAD.`);}
+  try{await x.sendMessage(to,text);tmSay("bot",`Sent to <b>${esc(to.name)}</b>. They'll see it in Messages next time they open LEAD.`);tmLog("message","sent a message to "+to.name);}
   catch(e){tmSay("bot","Couldn't send it: "+esc((e&&e.code)==="permission-denied"?"the database isn't set up for messages yet.":(e&&e.message)||String(e)));}
 }
 function tmFindPeople(q){const n=q.toLowerCase().trim();if(!n)return [];return TM.directory.map(p=>{const nm=(p.name||"").toLowerCase();const s=nm===n?1:nm.split(/\s+/).some(w=>w===n)?0.9:nm.startsWith(n)?0.8:nm.includes(n)?0.6:0;return {p,s};}).filter(x=>x.s>0).sort((a,b)=>b.s-a.s).map(x=>x.p);}
