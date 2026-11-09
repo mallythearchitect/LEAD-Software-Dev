@@ -175,6 +175,69 @@ button.th-m:hover,button.th-m:focus-visible{border-color:var(--tc)}
 .ask-panel.min>*:not(.ask-h){display:none}
 .ask-panel.min .ask-h{cursor:pointer}
 
+/* ---------- inside an app: the back button is the way home; no strip, no subheading ---------- */
+:root[data-mode="app"] .appstrip{display:none!important}
+.crumb .eyebrow{display:none}
+.crumb h1{font-size:24px}
+.cu-toc,.cu-block .who button{top:74px}
+.cu-read [id],.pr-sec{scroll-margin-top:74px}
+
+/* ---------- events and meetings as tiles ---------- */
+.ev-tools{margin-bottom:6px}
+.ev-wk{font:700 12px var(--body);text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin:22px 2px 10px}
+.ev-wk:first-of-type{margin-top:12px}
+.ev-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px}
+.ev-tile{display:grid;grid-template-columns:auto auto minmax(0,1fr);gap:4px 12px;align-items:start;text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:14px;cursor:pointer;color:var(--ink);font:inherit;min-width:0;position:relative;overflow:hidden;transition:transform .15s ease,border-color .15s ease}
+.ev-tile::before{content:"";position:absolute;left:0;top:0;bottom:0;width:5px;background:var(--tc)}
+.ev-tile:hover,.ev-tile:focus-visible{border-color:var(--tc);transform:translateY(-2px)}
+.ev-em{width:46px;height:46px;border-radius:14px;display:grid;place-items:center;font-size:24px;background:color-mix(in srgb,var(--tc) 18%,transparent);flex:none}
+.ev-em.big{width:56px;height:56px;font-size:30px}
+.ev-when{display:flex;flex-direction:column;align-items:center;min-width:34px;line-height:1}
+.ev-when b{font:800 22px var(--display);letter-spacing:-.02em}
+.ev-when small{font-size:10.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-top:3px}
+.ev-body{display:flex;flex-direction:column;gap:3px;min-width:0}
+.ev-n{font-size:15px;line-height:1.25}
+.ev-s{font-size:12.5px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ev-s em{font-style:normal;color:var(--blue);font-weight:600}
+.ev-pills{display:flex;flex-wrap:wrap;gap:4px;margin-top:3px}
+.ev-pills:empty{display:none}
+.ms-top{display:flex;gap:14px;align-items:center;margin:4px 0 10px}
+.ms-when{font:800 20px var(--display);letter-spacing:-.01em}
+.ms h3{font:700 11.5px var(--body);text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin:16px 0 6px}
+.ms-notes{white-space:pre-wrap;margin:0;line-height:1.5}
+.ms-list{list-style:none;margin:0;padding:0}
+.ms-list li{display:flex;gap:10px;align-items:flex-start;justify-content:space-between;padding:8px 0;border-top:1px solid var(--line2)}
+.ms-list .acts{display:flex;gap:4px;flex:none}
+
+/* ---------- readiness: steps down the side, fewer buttons, one Submit ---------- */
+.rd-acts [data-rd-copy],.rd-gaps,.rd-acts [data-rd-print]{display:none!important}
+.rd:has(.rd-secnav){display:grid;grid-template-columns:210px minmax(0,1fr);gap:0 24px;align-items:start}
+.rd:has(.rd-secnav)>*{grid-column:1/-1}
+.rd:has(.rd-secnav)>.rd-secnav{grid-column:1;grid-row:auto/span 60;position:sticky;top:76px;display:flex;flex-direction:column;gap:4px;overflow:visible;margin:0;padding:0}
+.rd:has(.rd-secnav)>.rd-secnav~*{grid-column:2}
+.rd:has(.rd-secnav) .rd-secnav button{width:100%;display:flex;align-items:center;gap:10px;text-align:left;border-radius:12px;padding:10px 12px}
+.rd:has(.rd-secnav) .rd-secnav button .c{margin-left:auto}
+.rd-submit{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:26px;padding:14px 16px;border:1px solid var(--line);border-radius:16px;background:var(--surface)}
+.rd-submit .late{color:var(--red)}
+@media (max-width:860px){.rd:has(.rd-secnav){grid-template-columns:1fr}.rd:has(.rd-secnav)>.rd-secnav{position:static;grid-column:1/-1;grid-row:auto;flex-direction:row;flex-wrap:wrap}.rd:has(.rd-secnav)>.rd-secnav~*{grid-column:1/-1}}
+
+/* ---------- programming: program tiles ---------- */
+.pg-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px;margin-top:16px}
+.pg-tile{display:flex;gap:14px;align-items:flex-start;text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:14px;cursor:pointer;color:var(--ink);font:inherit;min-width:0;position:relative;overflow:hidden;transition:transform .15s ease,border-color .15s ease}
+.pg-tile::after{content:"";position:absolute;right:-30px;top:-30px;width:110px;height:110px;border-radius:50%;background:var(--pc);opacity:.14}
+.pg-tile:hover,.pg-tile:focus-visible{border-color:var(--pc);transform:translateY(-2px)}
+.pg-ic{width:54px;height:54px;border-radius:16px;display:grid;place-items:center;background:var(--pc);color:#fff;flex:none;position:relative;z-index:1}
+.pg-ic svg{width:28px;height:28px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.pg-ic em{font-style:normal;font-size:26px}
+.pg-ic.big{width:62px;height:62px;border-radius:18px}
+.pg-body{display:flex;flex-direction:column;gap:3px;min-width:0;position:relative;z-index:1}
+.pg-body b{font:800 17px/1.2 var(--display);letter-spacing:-.01em}
+.pg-s{font-size:12.5px;color:var(--muted)}
+.pg-counts{display:flex;gap:6px;margin-top:5px}
+.pg-counts i{font-style:normal;font-size:11.5px;font-weight:600;background:var(--surface2);border-radius:999px;padding:2px 8px;color:var(--ink)}
+.pg-dates{display:flex;flex-wrap:wrap;gap:6px}
+.pg-dates span{background:var(--surface2);border-radius:999px;padding:4px 10px;font-size:12.5px}
+
 /* ---------- Who's who: the team by level ---------- */
 .tw-lv{margin-top:12px}
 .tw-lv h3{display:flex;align-items:center;gap:8px;font:700 12px var(--body);text-transform:uppercase;letter-spacing:.09em;color:var(--muted);margin:0 0 8px}

@@ -650,7 +650,7 @@ function openSheet(title,inner,opts={}){$("#overlay").innerHTML=`<div class="mod
 function openDetail(id,keep){
   const r=getRec(id);if(!r)return;const ev=isEvent(r);const o=$("#overlay");const scrollTop=keep&&o.querySelector(".drawer")?o.querySelector(".drawer").scrollTop:0;
   const prev={};if(keep){["detailForm","debriefForm"].forEach(fid=>{const f=document.getElementById(fid);if(f)new FormData(f).forEach((v,k)=>prev[fid+":"+k]=v);});const _ai=document.getElementById("aiText");if(_ai)prev["ai:text"]=_ai.value;}
-  const mapsQ=encodeURIComponent((r.address||"")+(r.address&&!/CT/.test(r.address)?", "+townOf(r)+" CT":""));
+  const mapsQ=encodeURIComponent([r.venue,r.address,(!r.address||!/\bCT\b/.test(r.address))?townOf(r)+" CT":""].filter(Boolean).join(", "));
   const kv=[];
   if(ev){kv.push(["When",[fmtDate(r.date,true),r.end_date&&r.end_date!==r.date?"to "+fmtDate(r.end_date,true):"",r.time,r.recurring?"(repeats)":""].filter(Boolean).join(" ")]);kv.push(["Where",[r.venue,r.address].filter(Boolean).join(", ")]);if(r.host)kv.push(["Host",r.host]);if(r.owner_type)kv.push(["Run by",r.owner_type]);kv.push(["Table",r.can_table===true?"Yes, orgs can table":r.can_table===false?"No table sign-up listed":"Not stated, ask"]);if(r.cost)kv.push(["Cost",r.cost]);}
   else{kv.push(["What",[r.subtype||r.type,laneOf(r)].filter(Boolean).join(", ")]);if(r.contact_name)kv.push(["Contact",r.contact_name+(r.role?", "+r.role:"")]);if(r.address)kv.push(["Address",r.address]);if(r.reach)kv.push(["Reach",r.reach]);}
@@ -669,7 +669,7 @@ function openDetail(id,keep){
   const html=`<div class="scrim" data-close="1"></div><div class="drawer" role="dialog" aria-label="${esc(r.name)}">
     <div class="top"><div><h2>${esc(r.name)}</h2><div class="small muted">${esc(townOf(r))}${r.priority?", "+r.priority+" priority":""}${S.added[id]?", added by you":""}</div></div><button class="x" data-close="1" aria-label="Close">×</button></div>
     <div class="kv">${kv.map(([k,v,h])=>`<div>${k}</div><div>${h?v:esc(v)}</div>`).join("")}</div>
-    <div class="chips">${r.address?`<a class="btn sm" href="https://www.google.com/maps/dir/?api=1&destination=${mapsQ}" target="_blank" rel="noopener">Directions</a>`:""}${S.added[id]?`<button class="btn sm" data-act="added-edit" data-id="${id}">Edit details</button><button class="btn sm danger" data-act="added-del" data-id="${id}">Delete</button>`:""}</div>
+    <div class="chips">${(r.address||r.venue)?`<a class="btn sm" href="https://www.google.com/maps/dir/?api=1&destination=${mapsQ}" target="_blank" rel="noopener">Directions</a>`:""}${S.added[id]?`<button class="btn sm" data-act="added-edit" data-id="${id}">Edit details</button><button class="btn sm danger" data-act="added-del" data-id="${id}">Delete</button>`:""}</div>
     <div class="edit"><h3>Status</h3>
       <div class="stpick">${STATUSES.map(s=>`<button data-st="${s}" aria-pressed="${r.status===s}"><i style="background:${SVAR[s]}"></i>${SLABEL[s]}</button>`).join("")}</div>
       ${ev?"":`<div class="yn"><span>Supports public charter schools?</span><span class="opts">${["Yes","Maybe","No"].map(v=>`<button data-yn="q_charter" data-v="${v}" aria-pressed="${r.q_charter===v}">${v}</button>`).join("")}</span></div>
@@ -3174,7 +3174,7 @@ fbSetupViews();
    No personal data in here: names, numbers and links come from the team database or are LEAD's public ones. */
 
 const TM_SECTIONS=[
-  {id:"events",name:"Events",tc:"gold",apps:["events","ready","proposals"],blurb:"Where LEAD shows up, and getting ready for it"},
+  {id:"events",name:"Events",tc:"gold",apps:["events","proposals"],blurb:"Where LEAD shows up, and getting ready for it"},
   {id:"programming",name:"Programming",tc:"green",apps:["programs","center"],blurb:"Classes, videos and the center calendar"},
   {id:"meetings",name:"Meetings",tc:"orange",apps:["meetings","tasks"],blurb:"What was decided and who does what"},
   {id:"canvassing",name:"Canvassing",tc:"blue",apps:["team","people","letters","board","map","blead"],blurb:"Signatures, signers, shifts and supporters"}
@@ -3411,7 +3411,7 @@ function tmMeetingsBlock(mine){
   if(!tabOK("meetings"))return "";
   let L=tmUpcoming().filter(m=>!mine||tmMine(m)).slice(0,6);const fell=mine&&!L.length;if(fell)L=tmUpcoming().slice(0,6);
   return `<section class="sec"><div class="h"><h2>${mine&&!fell?"My meetings":"Meetings coming up"}</h2><span class="meta">${mine?(fell?"the team's, until one is flagged as yours":"yours, by name or flagged as mine"):esc(FB?FB.centerLabel||"":"")}</span><span class="sp"></span><button class="btn sm" data-act="mtg-add">+ Meeting</button><button class="btn sm ghost" data-go2="meetings">All</button></div>
-    <div class="rows">${L.map(m=>`<div class="row" data-act="mtg-open" data-id="${m.id}"><div><div class="n">${esc(m.title||"Meeting")}</div><div class="d">${esc([m.where,m.with].filter(Boolean).join(" · "))}${m.center&&tmLeadish()?` · ${esc(tmCenterName(m.center))}`:""}</div></div><div class="r">${esc(tmWhen(m.date,m.time))}</div></div>`).join("")||`<p class="empty">${mine?"No meetings of yours coming up. Add one and flag it as yours.":"No meetings coming up."}</p>`}</div>
+    <div class="rows">${L.map(m=>`<div class="row" data-tm="mtg" data-id="${m.id}"><div><div class="n">${esc(m.title||"Meeting")}</div><div class="d">${esc([m.where,m.with].filter(Boolean).join(" · "))}${m.center&&tmLeadish()?` · ${esc(tmCenterName(m.center))}`:""}</div></div><div class="r">${esc(tmWhen(m.date,m.time))}</div></div>`).join("")||`<p class="empty">${mine?"No meetings of yours coming up. Add one and flag it as yours.":"No meetings coming up."}</p>`}</div>
   </section>`;
 }
 function tmCampaign(){
@@ -3683,7 +3683,7 @@ function tmBind(v){
     if(a==="cal-center"){S.cal.center=sel.value;S.cal.codes=null;render();}
     else if(a==="set-center"&&sel.value){const x=tmX();try{await x.setCenter(sel.value);toast("Center saved");location.reload();}catch(e){toast("Couldn't save your center: "+((e&&e.message)||e));}}
   }));
-  v.querySelectorAll("button[data-tm],a[data-tm]").forEach(b=>b.addEventListener("click",async e=>{const a=b.dataset.tm;
+  v.querySelectorAll("button[data-tm],a[data-tm],div[data-tm]").forEach(b=>b.addEventListener("click",async e=>{const a=b.dataset.tm;if(e.target.closest("[data-stop]"))return;
     if(a==="board"){e.preventDefault();tmBoard(b.dataset.k==="task"?b.dataset.id:"");}
     else if(a==="in"||a==="out")tmCheckIn(a==="in");
     else if(a==="drive-edit")tmDriveForm();
@@ -3694,10 +3694,120 @@ function tmBind(v){
     else if(a==="copy")copyText(b.dataset.v,"Copied");
     else if(a==="theme"){setTheme(b.dataset.v);render();}
     else if(a==="msg"){TM.to={id:b.dataset.id,name:b.dataset.name};TM.askTab="ask";tmAskToggle(true);tmSay("bot",`Writing to <b>${esc(b.dataset.name)}</b>. Type your message and press Send.`);}
+    else if(a==="mtg")tmMeetingSheet(b.dataset.id);
+    else if(a==="prog")tmProgramSheet(b.dataset.id);
+    else if(a==="rd-submit")tmRdSubmit(b.dataset.id);
+    else if(a==="rd-print")window.print();
     else if(a==="cents-all")v.querySelectorAll("[data-tm-cent]").forEach(c=>{c.checked=true;});
     else if(a==="cents-save"){const list=[...v.querySelectorAll("[data-tm-cent]")].filter(c=>c.checked).map(c=>c.value),note=v.querySelector("#tsNote");if(!list.length){note.textContent="Pick at least one center.";return;}b.disabled=true;note.textContent="Saving…";try{await tmX().setViewCenters(list);location.reload();}catch(er){b.disabled=false;note.textContent="Couldn't save: "+((er&&er.message)||er);}}
   }));
 }
+
+/* ---------- Events as tiles ---------- */
+const TM_EV_EMOJI={Meeting:"🤝",Workshop:"🛠️",Festival:"🎉",Other:"📌",Hearing:"🏛️",Family:"👨‍👩‍👧",Holiday:"🎊",Networking:"🥂",Sports:"🏀","Open House":"🏠",Expo:"🏷️",Fundraiser:"💛",Forum:"🎤",Worship:"⛪",Service:"🤲",Fair:"🎪",Gala:"✨",Market:"🧺",Parade:"🎺",Concert:"🎶",Health:"🩺"};
+const TM_EV_TONE={Meeting:"blue",Workshop:"green",Festival:"gold",Other:"slate",Hearing:"indigo",Family:"orange",Holiday:"plum",Networking:"violet",Sports:"teal","Open House":"sky",Expo:"brick",Fundraiser:"gold",Forum:"indigo",Worship:"violet",Service:"pine",Fair:"gold",Gala:"plum",Market:"green"};
+function tmEventEmoji(e){const n=((e.name||"")+" "+(e.venue||"")).toLowerCase();
+  const by=[["library","📚"],["church|parish|iglesia|temple|mosque|ministr","⛪"],["school|academy|pta|college","🏫"],["market|farmers","🧺"],["town hall|council|hearing|board of ed|legislat","🏛️"],["parade","🎺"],["concert|music|jazz|salsa|dance","🎶"],["health|clinic|wellness|vaccine","🩺"],["food|dinner|lunch|breakfast|potluck|cook|feast","🍲"],["job|career|hiring","💼"],["clean|park|garden|tree|trail","🌳"],["basketball|soccer|baseball|tournament|\\b5k\\b|race","🏀"],["toy|holiday|thanksgiving|christmas|navidad|turkey","🎁"],["art|paint|craft|mural","🎨"],["movie|film","🎬"],["youth|teen|kids|family|back.to.school","👨‍👩‍👧"],["gala|awards|celebration|anniversary","✨"],["vote|election|civic|forum","🗳️"],["fair|expo|festival|fest\\b","🎪"]];
+  for(const [re,em] of by)if(new RegExp(re).test(n))return em;
+  return TM_EV_EMOJI[e.event_type]||"📅";}
+function tmEventTile(e){const t0=todayISO(),dn=daysFromToday(e.date),d=e.date?parseISO(e.date):null;
+  const a=assessOf(e);const pills=[rdPill(e).replace("<br>",""),hasDebrief(e)?`<span class="pill green">notes done</span>`:"",a.decision?`<span class="pill ${a.cls==="go"?"green":a.cls==="fit"?"blue":a.cls==="hold"?"orange":"red"}">${a.decision==="GO IF IT FITS"?"if it fits":a.decision.toLowerCase()}</span>`:"",e.can_table===true?`<span class="pill green">table</span>`:e.can_table===false?"":`<span class="pill sand">table?</span>`].filter(Boolean).join("");
+  return `<button class="ev-tile" data-open="${e.id}" style="--tc:var(--t-${TM_EV_TONE[e.event_type]||"blue"})">
+    <span class="ev-em">${tmEventEmoji(e)}</span>
+    <span class="ev-when">${d?`<b>${d.getDate()}</b><small>${MON[d.getMonth()]}</small>`:`<small>TBD</small>`}</span>
+    <span class="ev-body"><b class="ev-n">${esc(e.name)}${e.added?' <span class="pill blue">new</span>':""}</b><span class="ev-s">${esc([e.time,e.venue||townOf(e)].filter(Boolean).join(" · "))}</span><span class="ev-s">${esc([e.event_type,e.host].filter(Boolean).join(" · "))}${dn!==null&&dn>=0&&dn<=7?` <em>${esc(rel(dn))}</em>`:""}</span><span class="ev-pills">${pills}${e.signatures?`<span class="pill grey">${e.signatures} sigs</span>`:""}</span></span>
+  </button>`;}
+rEvents=function(){
+  const f=S.ef,t0=todayISO();let E=allE();
+  const towns=[...new Set(E.map(townOf))].filter(Boolean).sort(),types=[...new Set(E.map(e=>e.event_type).filter(Boolean))].sort();
+  E=E.filter(e=>(!f.town||townOf(e)===f.town)&&(!f.etype||e.event_type===f.etype)&&(f.table===""||(f.table==="yes"?e.can_table===true:f.table==="maybe"?e.can_table==null:e.can_table===false))&&(!f.q||[e.name,e.venue,e.host,e.town,e.address,e.notes,e.why,e.event_type].join(" ").toLowerCase().includes(f.q))&&(f.past||!e.date||e.date>=t0||(e.end_date&&e.end_date>=t0)));
+  E.sort((a,b)=>(a.date||"9")<(b.date||"9")?-1:1);
+  const groups=[];E.forEach(e=>{const wk=weekKey(e.date);let g=groups[groups.length-1];if(!g||g.wk!==wk){g={wk,L:[]};groups.push(g);}g.L.push(e);});
+  return `<div class="toolrow ev-tools">
+    <div class="chips"><button class="chip" data-ef="table" data-v="" aria-pressed="${f.table===""}">All</button><button class="chip" data-ef="table" data-v="yes" aria-pressed="${f.table==="yes"}">Can table</button><button class="chip" data-ef="table" data-v="maybe" aria-pressed="${f.table==="maybe"}">Ask about a table</button><button class="chip" data-ef="past" data-v="${f.past?"":"1"}" aria-pressed="${!!f.past}">Past too</button></div>
+    <select data-ef="town"><option value="">Any town</option>${towns.map(c=>`<option ${f.town===c?"selected":""}>${esc(c)}</option>`).join("")}</select>
+    <select data-ef="etype"><option value="">Any kind</option>${types.map(c=>`<option ${f.etype===c?"selected":""}>${esc(c)}</option>`).join("")}</select>
+    <span class="sp"></span><span class="small muted">${E.length}</span>${tmLeadish()?`<button class="btn sm" data-act="report-sheet">Event report</button>`:""}</div>
+  ${groups.map(g=>`<h3 class="ev-wk">${g.wk?"Week of "+esc(fmtDate(g.wk,true)):"No date yet"}</h3><div class="ev-grid">${g.L.map(tmEventTile).join("")}</div>`).join("")||`<p class="empty">No events match.</p>`}`;
+};
+
+/* ---------- Meetings as tiles, opened in a clean sheet ---------- */
+function tmMeetingEmoji(m){const n=(m.title||"").toLowerCase();
+  const by=[["coordinator|sync|check.?in|stand.?up","🧭"],["partner","🤝"],["town hall|hearing|council|legislat","🏛️"],["board","📋"],["training|workshop","🎓"],["interview|hiring","💼"],["volunteer","🙌"],["budget|finance|invoice","💵"],["event|festival|fair","🎉"],["school|parent|pta","🏫"]];
+  for(const [re,em] of by)if(new RegExp(re).test(n))return em;return "🗣️";}
+function tmMeetingTile(m){const d=m.date?parseISO(m.date):null,lines=t=>(t||"").split("\n").map(x=>x.trim()).filter(Boolean);
+  return `<button class="ev-tile mt" data-tm="mtg" data-id="${m.id}" style="--tc:var(--t-${tmMine(m)?"gold":"orange"})">
+    <span class="ev-em">${tmMeetingEmoji(m)}</span>
+    <span class="ev-when">${d?`<b>${d.getDate()}</b><small>${MON[d.getMonth()]}</small>`:`<small>TBD</small>`}</span>
+    <span class="ev-body"><b class="ev-n">${esc(m.title||"Meeting")}</b><span class="ev-s">${esc([m.time?tmClock(m.time):"",m.where].filter(Boolean).join(" · "))}</span><span class="ev-s">${esc([m.with?"with "+m.with:"",m.center&&tmLeadish()?tmCenterName(m.center):""].filter(Boolean).join(" · "))}</span><span class="ev-pills">${tmMine(m)?`<span class="pill sand">mine</span>`:""}${lines(m.takeaways).length?`<span class="pill blue">${lines(m.takeaways).length} takeaway${lines(m.takeaways).length===1?"":"s"}</span>`:""}${lines(m.next).length?`<span class="pill grey">${lines(m.next).length} next step${lines(m.next).length===1?"":"s"}</span>`:""}</span></span>
+  </button>`;}
+rMeetings=function(){
+  const t0=todayISO(),key=m=>(m.date||"")+(tm24(m.time)||"99");
+  const up=S.meetings.filter(m=>m.date&&m.date>=t0).sort((a,b)=>key(a)<key(b)?-1:1),past=S.meetings.filter(m=>!m.date||m.date<t0).sort((a,b)=>key(a)<key(b)?1:-1);
+  return `<div class="toolrow"><span class="muted small">What was decided and what's next. Tap a meeting to read it; takeaways can go to Training, questions or tasks.</span><span class="sp"></span><button class="btn sm pri" data-act="mtg-add">+ Meeting</button></div>
+  ${up.length?`<h3 class="ev-wk">Coming up</h3><div class="ev-grid">${up.map(tmMeetingTile).join("")}</div>`:""}
+  ${past.length?`<h3 class="ev-wk">Past</h3><div class="ev-grid">${past.slice(0,30).map(tmMeetingTile).join("")}</div>`:""}
+  ${!up.length&&!past.length?`<p class="empty">${S.loaded.meetings?"No meetings yet. Add one.":ld()}</p>`:""}`;
+};
+function tmMeetingSheet(id){const m=S.meetings.find(x=>x.id===id);if(!m)return;const lines=t=>(t||"").split("\n").map(x=>x.trim()).filter(Boolean);
+  const li=(arr,kind)=>arr.map((t,i)=>`<li><span>${esc(t)}</span>${S.canWrite===false?"":`<span class="acts">${kind==="take"?`<button class="btn sm ghost" data-ms="pb" data-i="${i}">→ Training</button><button class="btn sm ghost" data-ms="q" data-i="${i}">→ Question</button>`:`<button class="btn sm ghost" data-ms="task" data-i="${i}">→ Task</button>`}</span>`}</li>`).join("");
+  openSheet(m.title||"Meeting",`<div class="ms"><div class="ms-top"><span class="ev-em big">${tmMeetingEmoji(m)}</span><div><div class="ms-when">${esc(tmWhen(m.date,m.time))}</div><div class="muted small">${esc([m.where,m.with?"with "+m.with:"",m.center&&tmLeadish()?tmCenterName(m.center):""].filter(Boolean).join(" · "))}</div></div></div>
+    ${m.notes?`<h3>Notes</h3><p class="ms-notes">${esc(m.notes)}</p>`:""}
+    ${lines(m.takeaways).length?`<h3>Takeaways</h3><ul class="ms-list">${li(lines(m.takeaways),"take")}</ul>`:""}
+    ${lines(m.next).length?`<h3>Next steps</h3><ul class="ms-list">${li(lines(m.next),"next")}</ul>`:""}
+    ${!m.notes&&!lines(m.takeaways).length&&!lines(m.next).length?`<p class="muted small" style="margin-top:12px">No notes yet. Tap Edit to add what was said and what's next.</p>`:""}</div>`,
+    {btns:`${S.canWrite===false?"":`<button class="btn pri" data-ms="edit">Edit</button>`}<button class="btn ghost" data-close="1">Close</button>`});
+  $("#overlay").querySelectorAll("[data-ms]").forEach(b=>b.onclick=()=>{const a=b.dataset.ms,i=+b.dataset.i;
+    if(a==="edit")meetingForm(m);
+    else if(a==="pb")pbForm({title:"",body:lines(m.takeaways)[i],status:"confirmed",source:(m.title||"Meeting")+", "+fmtDate(m.date),lane:"How LEAD works"});
+    else if(a==="q")qForm(null,{q:lines(m.takeaways)[i],askWho:""});
+    else if(a==="task")taskForm(null,{title:lines(m.next)[i],notes:"From "+(m.title||"Meeting")+", "+fmtDate(m.date)});});}
+
+/* ---------- Readiness lives inside the event: steps down the side, real names, one Submit ---------- */
+rdPeople=function(){const s=new Set([ME().name].filter(Boolean));tmTeam().forEach(g=>{g.in.forEach(p=>{if(p.name)s.add(p.name);});g.pending.forEach(p=>{if(p.name)s.add(p.name);});});return [...s].sort((a,b)=>a.localeCompare(b));};
+const tmRdDetail=rdDetail;
+rdDetail=function(d){const sc=rdScore(d);
+  const sub=d.submittedAt?`<span class="muted small">Submitted ${esc(fmtDate(d.submittedAt))}${d.submittedBy?" by "+esc(String(d.submittedBy).split("@")[0]):""}</span>`:`<span class="muted small">Fill in each step, then submit to the coordinators.</span>`;
+  return tmRdDetail(d)+`<div class="rd-submit"><div><b>${sc.pct}% ready</b> · ${sc.total-sc.done} open${sc.overdue?` · <span class="late">${sc.overdue} overdue</span>`:""}</div>${sub}<span class="sp"></span><button class="btn" data-tm="rd-print">Print</button>${S.canWrite===false?"":`<button class="btn pri" data-tm="rd-submit" data-id="${esc(d.id)}">${d.submittedAt?"Submit again":"Submit to the coordinators"}</button>`}</div>`;};
+async function tmRdSubmit(id){const d=rdDoc(id);if(!d)return;const sc=rdScore(d),x=tmX();
+  const coords=TM.directory.filter(p=>["coord","exec"].includes(p.role));
+  const text=`Readiness checklist submitted: ${d.name||"Untitled event"}${d.date?" ("+fmtDate(d.date)+")":""}. ${sc.pct}% ready, ${sc.total-sc.done} open${sc.overdue?", "+sc.overdue+" overdue":""}. Open the event in LEAD to see it.`;
+  let sent=0;if(x){for(const p of coords){try{await x.sendMessage(p,text);sent++;}catch(e){}}}
+  const {id:_i,...rest}=d;const ok=await write("ready",id,{...rest,submittedAt:todayISO(),submittedBy:tmMe()});
+  if(!ok)return;tmLog("ready",`submitted the readiness checklist for "${d.name||"an event"}"`);
+  toast(sent?`Submitted. Sent to ${sent} coordinator${sent===1?"":"s"}.`:"Submitted and logged in Activity. No coordinator has signed in yet to message.");render();}
+
+/* ---------- Programming: the center's programs, with the classes and videos for each ---------- */
+function tmPrograms(){
+  const map=new Map();
+  Object.values((typeof CTR!=="undefined"&&CTR.months)||{}).forEach(M=>(M.programs||[]).forEach(p=>{if(!map.has(p.short))map.set(p.short,{key:p.short,name:p.name,short:p.short,when:p.when,time:p.time,color:p.color,icon:p.icon,blurb:p.blurb,dates:[]});map.get(p.short).dates.push(...(p.dates||[]));}));
+  [...S.sessions.map(x=>x.program),...S.videos.map(x=>x.program)].filter(Boolean).forEach(n=>{if(![...map.values()].some(p=>p.name===n||p.short===n))map.set(n,{key:n,name:n,short:n,when:"",time:"",color:"",icon:"",blurb:"",dates:[]});});
+  return [...map.values()];}
+const tmProgOf=(p,x)=>x.program===p.name||x.program===p.short;
+const tmProgOptions=()=>{const names=tmPrograms().map(p=>p.name);PROGRAMS.forEach(n=>{if(!names.includes(n))names.push(n);});return names;};
+function tmProgEmoji(n){n=String(n||"").toLowerCase();const by=[["salsa|bachata|dance|zumba","💃"],["chapter|book|read|literacy","📖"],["heal|wellness|yoga|circle","🧘"],["business|dream|entrepreneur|financ","💼"],["citizen|esol|english|civic","🗽"],["game|night|social","🎲"],["history","🏺"],["health","🩺"],["educat|school|college|option","🎓"]];for(const [re,em] of by)if(new RegExp(re).test(n))return em;return "📚";}
+function tmProgIcon(p){return p.icon&&typeof CTR_ICONS!=="undefined"&&CTR_ICONS[p.icon]?CTR_ICONS[p.icon]:`<em>${tmProgEmoji(p.name)}</em>`;}
+rPrograms=function(){
+  const P=tmPrograms(),t0=todayISO(),ws=weekStart(),last4=addDays(ws,-21),vids=S.videos,ses=S.sessions;
+  const v4=vids.filter(v=>v.date>=last4).length;
+  const tile=p=>{const next=p.dates.filter(d=>d>=t0).sort()[0];const nv=vids.filter(x=>tmProgOf(p,x)).length,ns=ses.filter(x=>tmProgOf(p,x)).length;
+    return `<button class="pg-tile" data-tm="prog" data-id="${esc(p.key)}" style="--pc:${p.color||"var(--lead-blue)"}"><span class="pg-ic">${tmProgIcon(p)}</span><span class="pg-body"><b>${esc(p.name)}</b><span class="pg-s">${esc([p.when,p.time].filter(Boolean).join(" · ")||"Logged classes")}</span>${next?`<span class="pg-s">Next: ${esc(tmWhen(next,""))}</span>`:""}<span class="pg-counts"><i>${ns} class${ns===1?"":"es"}</i><i>${nv} video${nv===1?"":"s"}</i></span></span></button>`;};
+  return `<div class="toolrow"><span class="muted small">The center's programs, with the classes logged and the videos for each. LEAD's marks: 10 people a class, a video a week.</span><span class="sp"></span><button class="btn sm" data-act="ses-add">+ Class</button><button class="btn sm pri" data-act="vid-add">+ Video</button></div>
+  <div class="strip"><div class="${v4>=4?"okv":"warnv"}"><b class="num">${v4} of 4</b><span>weeks with a video, last 4 weeks</span></div><div><b class="num">${ses.filter(x=>(+x.participants||0)>=10).length} of ${ses.length}</b><span>classes that hit 10 people</span></div><div><b class="num">${vids.length}</b><span>videos in the library</span></div></div>
+  <div class="pg-grid">${P.map(tile).join("")||`<p class="empty">No programs yet. Add a class or a video.</p>`}</div>`;
+};
+function tmProgramSheet(key){const p=tmPrograms().find(x=>x.key===key);if(!p)return;const t0=todayISO();
+  const up=[...new Set(p.dates.filter(d=>d>=t0))].sort().slice(0,6),vids=S.videos.filter(x=>tmProgOf(p,x)).sort((a,b)=>(a.date||"")<(b.date||"")?1:-1),ses=S.sessions.filter(x=>tmProgOf(p,x)).sort((a,b)=>(a.date||"")<(b.date||"")?1:-1);
+  openSheet(p.name,`<div class="ms"><div class="ms-top"><span class="pg-ic big" style="--pc:${p.color||"var(--lead-blue)"}">${tmProgIcon(p)}</span><div><div class="ms-when">${esc([p.when,p.time].filter(Boolean).join(" · ")||"Logged classes")}</div><div class="muted small">${esc(p.blurb||"")}</div></div></div>
+    ${up.length?`<h3>Coming up</h3><div class="pg-dates">${up.map(d=>`<span>${esc(fmtDate(d,true))}</span>`).join("")}</div>`:""}
+    <h3>Videos <span class="muted">${vids.length}</span></h3><div class="rows">${vids.map(v=>`<div class="row" data-ms="vid" data-id="${v.id}"><div><div class="n">${esc(v.topic||"Video")}</div><div class="d">${fmtDate(v.date)}${v.where?" · "+esc(v.where):""}</div></div><div class="r">${v.url?`<a class="btn sm" href="${esc(v.url)}" target="_blank" rel="noopener" data-stop="1">Watch</a> `:""}<span class="pill ${v.status==="posted"?"green":"grey"}">${esc(v.status||"posted")}</span></div></div>`).join("")||`<p class="empty">No videos for this program yet.</p>`}</div>
+    <h3>Classes logged <span class="muted">${ses.length}</span></h3><div class="rows">${ses.slice(0,8).map(x=>`<div class="row" data-ms="ses" data-id="${x.id}"><div><div class="n">${esc(x.topic||p.name)}</div><div class="d">${fmtDate(x.date)}${x.where?" · "+esc(x.where):""}</div></div><div class="r"><span class="pill ${(+x.participants||0)>=10?"green":"orange"}">${+x.participants||0} people</span></div></div>`).join("")||`<p class="empty">No classes logged yet.</p>`}</div></div>`,
+    {btns:`${S.canWrite===false?"":`<button class="btn pri" data-ms="addvid">+ Video</button><button class="btn" data-ms="addses">+ Class</button>`}<button class="btn ghost" data-close="1">Close</button>`});
+  $("#overlay").querySelectorAll("[data-ms]").forEach(b=>b.addEventListener("click",e=>{if(e.target.closest("[data-stop]"))return;const a=b.dataset.ms,id=b.dataset.id;
+    if(a==="addvid")videoForm(null,{program:p.name});else if(a==="addses")sessionForm(null,{program:p.name});
+    else if(a==="vid")videoForm(S.videos.find(v=>v.id===id));else if(a==="ses")sessionForm(S.sessions.find(v=>v.id===id));}));}
+videoForm=function(x,pre){const isNew=!x||!x.id;x=x||pre||{};form({title:isNew?"Log a video":"Edit video",fields:[{key:"program",label:"Program",type:"select",options:[["","(none)"],...tmProgOptions().map(n=>[n,n])]},{key:"date",label:"Date",type:"date",default:todayISO()},{key:"status",label:"Status",type:"select",options:["posted","scheduled","filming","idea"],default:"posted"},{key:"topic",label:"Topic",required:true,wide:true},{key:"where",label:"Posted where",placeholder:"Instagram, Facebook, TikTok"},{key:"url",label:"Link",wide:true}],values:x,onSave:async v=>write("videos",x.id||uid("v"),v),onDelete:isNew?null:()=>remove("videos",x.id)});};
+sessionForm=function(x,pre){const isNew=!x||!x.id;x=x||pre||{};form({title:isNew?"Log a class":"Edit class",fields:[{key:"date",label:"Date",type:"date",default:todayISO()},{key:"program",label:"Program",type:"select",options:tmProgOptions()},{key:"topic",label:"Topic or session",wide:true},{key:"participants",label:"People who came",type:"number"},{key:"where",label:"Where",default:ME().place},{key:"notes",label:"Notes",type:"textarea",rows:2,wide:true}],values:x,onSave:async v=>write("sessions",x.id||uid("ss"),{...v,participants:Number(v.participants)||0}),onDelete:isNew?null:()=>remove("sessions",x.id)});};
 
 /* ---------- feedback: training sessions and the software demo ---------- */
 const TM_FEEDBACK={
