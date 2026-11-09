@@ -196,13 +196,15 @@ TEAM_JS = open(os.path.join(repo, "tools", "team-ui.js"), encoding="utf-8").read
 app = app.replace(start_marker, FOOTER + "\n" + TEAM_JS + "\n" + start_marker)
 
 # 7. Hooks the team code needs: its own page in the page switch, and meeting times.
-patch("home:rHome,letters:rLetters})[S.tab]();", "home:rHome,letters:rLetters,resources:rResources,approved:rApproved})[S.tab]();")
+patch("home:rHome,letters:rLetters})[S.tab]();", "home:rHome,letters:rLetters,resources:rResources,approved:rApproved,guide:rGuide})[S.tab]();")
 patch('${fmtDate(m.date,true)}${m.with?", with "+esc(m.with):""}', '${fmtDate(m.date,true)}${m.time?" · "+esc(tmClock(m.time)):""}${m.with?", with "+esc(m.with):""}')
 patch('const mapsQ=encodeURIComponent((r.address||"")+(r.address&&!/CT/.test(r.address)?", "+townOf(r)+" CT":""));',
       'const mapsQ=encodeURIComponent([r.venue,r.address,(!r.address||!/\\bCT\\b/.test(r.address))?townOf(r)+" CT":""].filter(Boolean).join(", "));')
 patch('${r.address?`<a class="btn sm" href="https://www.google.com/maps/dir/?api=1&destination=${mapsQ}"', '${(r.address||r.venue)?`<a class="btn sm" href="https://www.google.com/maps/dir/?api=1&destination=${mapsQ}"')
 patch(r'<div class="note"><b>Kelly\'s rule:</b>[^\n]*?</div>\n', '', regex=True)
 patch('[["list","List"],["board","Board"],["cal","Calendar"]]', '[["board","Board"],["list","List"],["cal","Calendar"]]')
+patch("Kelly's checklist: owners, deadlines, confirmation", "Owners, deadlines, confirmation")
+patch('<div class="rd-src">Kelly Sheehan\'s Event Readiness &amp; Accountability Checklist, Oct 28, 2026</div>', '<div class="rd-src">LEAD\'s Event Readiness &amp; Accountability Checklist</div>')
 
 # 8. The top bar: the LEAD logo instead of the old name, the saved-status pill out at the edge.
 def mpatch(old, new, regex=False):

@@ -297,6 +297,32 @@ button.th-m:hover,button.th-m:focus-visible{border-color:var(--tc)}
 .board .col{border-radius:14px}
 .board .tcard{border-radius:12px;border:1px solid var(--line);padding:10px 12px;box-shadow:none}
 
+/* ---------- the event pop-up ---------- */
+.drawer details.ev-more{margin-top:18px;border-top:1px solid var(--line);padding-top:8px}
+.drawer details.ev-more>summary{cursor:pointer;list-style:none;display:flex;align-items:center;gap:8px;padding:8px 0;font-weight:600;color:var(--muted)}
+.drawer details.ev-more>summary::-webkit-details-marker{display:none}
+.drawer details.ev-more>summary::before{content:"›";display:inline-block;transition:transform .15s;font-size:18px;line-height:1}
+.drawer details.ev-more[open]>summary::before{transform:rotate(90deg)}
+.drawer details.ev-more>summary small{color:var(--muted);font-weight:400}
+
+/* ---------- "LEAD was updated" ---------- */
+.upd-bar{position:fixed;left:50%;transform:translateX(-50%);top:max(12px,env(safe-area-inset-top,0px));z-index:70;display:flex;gap:10px;align-items:center;background:var(--lead-navy);color:#fff;border-radius:999px;padding:8px 10px 8px 16px;box-shadow:0 12px 36px rgba(0,0,0,.4);font-weight:600;font-size:14px;max-width:calc(100vw - 24px)}
+.upd-bar .btn.ghost{color:#fff;border-color:rgba(255,255,255,.3);background:none}
+
+/* ---------- the guide ---------- */
+.gd{max-width:860px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
+.gd-hero{display:flex;gap:18px;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:18px 22px;flex-wrap:wrap}
+.gd-logo{height:72px;width:auto}
+.gd-hero h1{font-size:28px;margin-bottom:6px}
+.gd-hero p{margin:0;color:var(--muted);line-height:1.5;max-width:60ch}
+.gd-sec{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:16px 20px}
+.gd-sec h2{font-size:20px;margin-bottom:8px}
+.gd-list{margin:0;padding-left:20px;line-height:1.55;font-size:14.5px}
+.gd-list li{margin:4px 0}
+.gd-sec .chips{margin-top:12px}
+.gd-sec p{margin:0;line-height:1.5}
+@media (max-width:600px){.gd-hero{padding:14px 16px}.gd-logo{height:56px}.gd-sec{padding:14px 16px}}
+
 /* ---------- proposals: one column of cards, like a form ---------- */
 .gf{max-width:780px;margin:0 auto;display:flex;flex-direction:column;gap:12px}
 .gf-card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px 22px;position:relative}

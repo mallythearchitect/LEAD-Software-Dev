@@ -47,6 +47,7 @@ const tmApps=ids=>ids.map(appById).filter(a=>a&&appOK(a));
   ROWS.push(["campaign","Campaign"],...TM_SECTIONS.map(s=>[s.id,s.name]),["role","My role"],["tools","Tools & resources"],["runs","How LEAD runs"]);
   APPS.push({id:"resources",row:"tools",tc:"gold",desc:"Links, Drive folders, the Facebook and WhatsApp groups, the email signature and LEAD's contacts."});
   APPS.push({id:"approved",row:"events",tc:"gold",desc:"Events LEAD said yes to that are coming up, each with its readiness checklist."});
+  APPS.push({id:"guide",row:"tools",tc:"blue",desc:"How to use LEAD this week: what each part does, what to try, how to give feedback."});
   APPS.forEach(a=>{const s=sec[a.id];
     if(s){a.row=s.id;a.tc=s.tc;}
     else if(a.id==="today"){a.row="campaign";a.tc="blue";}
@@ -60,6 +61,8 @@ const tmApps=ids=>ids.map(appById).filter(a=>a&&appOK(a));
   if(d("org"))d("org").desc="The team by level and center, and who to ask for what.";
   TITLES.resources="Tools & resources";PAGE_CONTEXT.resources="Links, files & contacts";
   TITLES.approved="Approved events";PAGE_CONTEXT.approved="Coming up, with readiness";
+  TITLES.guide="How to use LEAD";PAGE_CONTEXT.guide="The demo guide";
+  IC.guide='<path d="M5 4.5h8a3 3 0 0 1 3 3v12a2.5 2.5 0 0 0-2.5-2.5H5z"/><path d="M19 4.5h-3v12.5h3z"/><path d="M8 8.5h4M8 11.5h4"/>';
   IC.approved='<path d="M4 7.5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/><path d="M4 10.5h16M8 3.5v4M16 3.5v4"/><path d="M9 15l2 2 4-4"/>';
   TITLES.playbook="Training";PAGE_CONTEXT.playbook="Training center";
   TITLES.log="Notes";PAGE_CONTEXT.log="Your notes";
@@ -76,8 +79,9 @@ const tmApps=ids=>ids.map(appById).filter(a=>a&&appOK(a));
     const btn={};strip.querySelectorAll("[data-tab]").forEach(b=>{btn[b.dataset.tab]=b;});
     if(!btn.resources){const b=document.createElement("button");b.dataset.tab="resources";b.textContent="Tools & resources";b.addEventListener("click",()=>go("resources"));btn.resources=b;}
     if(!btn.approved){const b=document.createElement("button");b.dataset.tab="approved";b.textContent="Approved events";b.addEventListener("click",()=>go("approved"));btn.approved=b;}
+    if(!btn.guide){const b=document.createElement("button");b.dataset.tab="guide";b.textContent="How to use LEAD";b.addEventListener("click",()=>go("guide"));btn.guide=b;}
     ["playbook","log","center"].forEach(id=>{const b=btn[id];if(b&&b.firstChild&&b.firstChild.nodeType===3)b.firstChild.nodeValue=TITLES[id]+" ";});
-    const groups=[["Campaign",["today"]],...TM_SECTIONS.map(s=>[s.name,s.apps]),["My role",TM_ROLE_APPS],["Tools & resources",["resources",...TM_TOOL_APPS]]];
+    const groups=[["Campaign",["today"]],...TM_SECTIONS.map(s=>[s.name,s.apps]),["My role",TM_ROLE_APPS],["Tools & resources",["resources","guide",...TM_TOOL_APPS]]];
     const frag=document.createDocumentFragment(),used=new Set();
     for(const [name,ids] of groups){const L=ids.filter(id=>btn[id]);if(!L.length)continue;const g=document.createElement("span");g.className="grp";g.textContent=name;frag.appendChild(g);L.forEach(id=>{frag.appendChild(btn[id]);used.add(id);});}
     Object.keys(btn).filter(id=>!used.has(id)).forEach(id=>frag.appendChild(btn[id]));
@@ -310,6 +314,7 @@ function tmTools(onHome){
   const fbCard=`<button class="th-tool" data-tm="feedback" style="--tc:var(--t-orange)"><span class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3h11A2.5 2.5 0 0 1 20 5.5v8a2.5 2.5 0 0 1-2.5 2.5H10l-4.5 4v-4A1.5 1.5 0 0 1 4 14.5z"/><path d="M8.5 8.5h7M8.5 11.5h4.5"/></svg></span><span><b>Give feedback</b><small>On a training session or on this week's demo. Two minutes.</small></span><span class="go">Open ›</span></button>`;
   return `${onHome?"":`<p class="muted" style="margin:2px 0 0">Everything the team shares: links, Drive folders, the groups, training, who's who and LEAD's own pages.</p>`}
   <div class="th-tools">
+    ${card("guide","How to use LEAD","The demo guide: what each part does, what to try, how to give feedback","Read it ›","blue")}
     ${tabOK("sig")?card("sig","Email signature","Your LEAD signature for Gmail, with the logo and social links","Make yours ›","blue"):""}
     ${tabOK("playbook")?card("playbook","Training","How LEAD works, the script and facts, open questions","Open ›","green"):""}
     ${tabOK("org")?card("org","Who's who","The team by level and center","Open ›","orange"):""}
@@ -600,6 +605,81 @@ rEvents=function(){
     <span class="sp"></span><span class="small muted">${E.length}</span>${tmLeadish()?`<button class="btn sm" data-act="report-sheet">Event report</button>`:""}</div>
   ${groups.map(g=>`<h3 class="ev-wk">${g.wk?"Week of "+esc(fmtDate(g.wk,true)):"No date yet"}</h3><div class="ev-grid">${g.L.map(tmEventTile).join("")}</div>`).join("")||`<p class="empty">No events match.</p>`}`;
 };
+
+/* ---------- the event pop-up: the basics up top; status, notes and the report folded away ---------- */
+S.evMore={};
+const tmOpenDetail0=openDetail;
+openDetail=function(id,keep){tmOpenDetail0(id,keep);
+  try{const dr=$("#overlay .drawer"),ed=dr&&dr.querySelector(".edit");const r=getRec(id);if(!ed||!r||!isEvent(r)||ed.closest("details.ev-more"))return;
+    const det=document.createElement("details");det.className="ev-more";det.open=!!S.evMore[id];
+    det.innerHTML=`<summary><span>More: status, notes and the after-event report</span><small>${FB&&FB.owner?"and your assessment tools":""}</small></summary>`;
+    ed.parentNode.insertBefore(det,ed);det.appendChild(ed);det.addEventListener("toggle",()=>{S.evMore[id]=det.open;});
+    if(!(FB&&FB.owner)){ed.querySelectorAll(".assess,.ai").forEach(x=>{x.style.display="none";});ed.querySelectorAll("h3").forEach(h=>{if(/worth the time/i.test(h.textContent))h.style.display="none";});}
+  }catch(e){}};
+
+/* ---------- "LEAD was updated": open tabs get told when a new build is live ---------- */
+(function tmVersionWatch(){
+  const src=(document.querySelector('script[src*="gate.js?v="]')||{}).src||"",cur=(src.match(/v=(\d+)/)||[])[1];if(!cur)return;let shown=false;
+  async function check(){if(shown||document.visibilityState!=="visible")return;try{const t=await (await fetch(location.pathname||"/",{cache:"no-store"})).text();const m=t.match(/gate\.js\?v=(\d+)/);if(m&&m[1]!==cur){shown=true;tmUpdateBanner();}}catch(e){}}
+  setInterval(check,5*60*1000);document.addEventListener("visibilitychange",()=>setTimeout(check,800));
+})();
+function tmUpdateBanner(){if(document.getElementById("updBar"))return;const b=document.createElement("div");b.id="updBar";b.className="upd-bar";b.setAttribute("role","status");
+  b.innerHTML=`<span>LEAD was updated.</span><button class="btn sm pri" id="updGo">Refresh</button><button class="btn sm ghost" id="updNo" aria-label="Later">Later</button>`;document.body.appendChild(b);
+  b.querySelector("#updGo").onclick=()=>location.reload();b.querySelector("#updNo").onclick=()=>b.remove();}
+
+/* ---------- How to use LEAD: the demo guide, inside the app ---------- */
+function rGuide(){
+  const lead=tmLeadish(),owner=!!(FB&&FB.owner);
+  const go2=(id,label)=>tabOK(id)||id==="home"?`<button class="btn sm" data-go2="${id}">${esc(label||TITLES[id]||id)}</button>`:"";
+  const sec=(title,body)=>`<section class="gd-sec"><h2>${esc(title)}</h2>${body}</section>`;
+  const li=items=>`<ul class="gd-list">${items.map(x=>`<li>${x}</li>`).join("")}</ul>`;
+  return `<div class="gd">
+  <div class="gd-hero"><img src="img/lead-logo.png" alt="LEAD" class="gd-logo"><div><h1>How to use LEAD</h1><p>The team's hub for ${esc(FB&&FB.centerLabel||"your center")}: what's happening, what's due, who's doing what, and how LEAD runs. This page is the guide for demo week. Tap any button to jump there.</p></div></div>
+  ${sec("Getting in",li([
+    "Open <b>lead.thebiggercanvas.com</b>. Type the team password your coordinator gave you (tick <i>keep this device unlocked</i> on your own phone or laptop, not on a shared computer), then <b>Continue with Google</b>.",
+    "First time: you'll see <i>Waiting to be let in</i>. The owner lets you in from the owner page; the page opens by itself when that happens.",
+    "Assistant coordinators pick their center once. Coordinators and executives pick which centers to look at under <b>Settings</b>.",
+    "Signing out locks the device again. The ‹ LEAD button at the top left always goes back."]))}
+  ${sec("Home",li([
+    "<b>Campaign</b>: today's numbers (signatures, meetings today, the next event, programs today, who's in the office), then the four sections as icons, then <b>This week</b> and the meetings coming up. Tap <i>Meetings today</i> or <i>Next event</i> for a pop-up. Tap <i>I'm in today</i> to check in.",
+    "<b>My role</b>: your next meeting, your tasks, your hours this week, check-in, <b>Do now</b> with the board, and your own tools.",
+    "<b>Tools & resources</b>: this guide, the email signature, Training, Who's who, Cultures, feedback, Settings, the groups, partners, the registration form and Drive."])+`<div class="chips">${go2("home","Home")}</div>`)}
+  ${sec("Events",li([
+    "<b>Events</b> are tiles: an emoji for the kind, the date, place and pills (<i>table</i> = we can set up a table; <i>ready 40%</i> = a readiness checklist is started). Tap one for the details, directions and the readiness button. Status, notes and the after-event report sit under <i>More</i>.",
+    "<b>Approved events</b>: what LEAD said yes to and is coming up. <b>Start readiness</b> opens the checklist: six steps down the side; fill them in, then <b>Submit to the coordinators</b> at the bottom.",
+    "<b>Proposals</b>: when an outside group asks to run something with LEAD, their 8-part proposal goes here, one card per part, with a fit score."])+`<div class="chips">${go2("events")}${go2("approved")}${go2("proposals")}</div>`)}
+  ${sec("Programming",li([
+    "<b>Programs & videos</b>: the center's programs as tiles. Tap one for its upcoming dates, the classes logged and its videos; <b>+ Class</b> and <b>+ Video</b> file under that program. LEAD's marks: 10 people a class, a video a week.",
+    "<b>Calendar</b>: the month at the center, the next session, the registration form. Keyholders: <i>Show the codes</i> at the bottom asks for the team password and the keyholder agreement."])+`<div class="chips">${go2("programs")}${go2("center")}</div>`)}
+  ${sec("Meetings",li([
+    "<b>Meetings</b> are tiles; tap one to read the notes, takeaways and next steps, <b>Edit</b> to change it. Add a meeting with a time so it shows on Today. A takeaway can become a how-to or a question; a next step can become a task.",
+    "<b>Tasks</b> open on the board: drag cards between To do, Doing, Waiting and Done. The list shows cards with a chevron for notes and steps.",
+    "<b>Board of Champions</b>: names for the board, added here first."])+`<div class="chips">${go2("meetings")}${go2("tasks")}${go2("board")}</div>`)}
+  ${sec("Canvassing",li([
+    "<b>Canvass</b>: the campaign switcher at the top (each center has its own), the overview, shifts, the team and where to canvass. <b>Signers</b> asks for the team password once per visit before any names show.",
+    "<b>People & orgs</b>: everyone in the pipeline, from not reached yet to Champion. <b>Letters</b>: letters of support. <b>Map</b>: everything pinned by town; tap a pin for directions."])+`<div class="chips">${go2("team")}${go2("people")}${go2("letters")}${go2("map")}</div>`)}
+  ${sec("Ask LEAD (bottom right)",li([
+    "Tap it and type: <i>when's the next meeting</i>, <i>what's on today</i>, <i>who's in</i>, <i>how many signatures</i>, or any name to search.",
+    "<b>message Iris: running 10 late</b> sends her a note (the <b>Messages</b> tab holds them; the badge shows unread). <i>message a coordinator</i> gives you a list.",
+    "<b>check me in</b> / <b>check me out</b>. The <b>Activity</b> tab shows who's in and the latest check-ins, cards moved, meetings added, messages and feedback.",
+    "<b>/feedback</b> opens the training and demo forms. <b>/guide</b> opens this page. <b>/help</b> lists everything. <b>/inquiry</b> + a question reasons over the hub's data"+(tmAIOn()?"":" (once the owner connects it)")+"."]))}
+  ${sec("Training and Who's who",li([
+    "<b>Training</b> is an inbox: type what you want training on and send it; coordinators answer, and answers become how-tos. The other tabs hold the how-tos, the script and facts, hearings and schools.",
+    "<b>Who's who</b>: the team by level. A green dot means they have LEAD open right now. <b>Message</b> opens the assistant with them picked."])+`<div class="chips">${go2("playbook")}${go2("org")}</div>`)}
+  ${sec("Feedback",li([
+    "<b>Give feedback</b> (Tools & resources, or <b>/feedback</b>): the <b>Training</b> form after a session, the <b>Software demo</b> form after trying the app. Two or three minutes; your name is filled in.",
+    lead?"You can read every response under Tools & resources → <b>Feedback</b>, with averages per question.":"Coordinators, executives and the owner read the responses."])+`<div class="chips"><button class="btn sm pri" data-tm="feedback">Give feedback</button></div>`)}
+  ${sec("Try these this week",li([
+    "Get in on your phone and tick <i>keep this device unlocked</i>.","Check in with <i>I'm in today</i>.","Open an event, then its readiness checklist, and fill in one step.","Move a card on the board.","Add a meeting with a time and watch Today change.","Log a class or a video under a program.","Send a teammate a message from Who's who.","Ask Ask LEAD a question.","Send <b>/feedback</b> → Software demo."]))}
+  ${sec("What's demo and what's real",li([
+    "Everything marked <b>Demo</b> is made up: names, phone numbers (555-01xx), emails (example.org). Real data is loaded where a center has it.",
+    "Messages and activity stay inside LEAD; nothing texts or emails anyone. The green dot means <i>has LEAD open</i>, not a true presence system.",
+    "Ask LEAD answers from the hub's own data only. If the hub is out of date, so is the answer.",
+    "The readiness checklist, approvals and feedback are live and shared. Hours are yours alone.",
+    "Found something confusing or broken? That's exactly what the demo feedback form is for."]))}
+  ${sec("Questions",`<p>Ask your coordinator, or use Ask LEAD → <b>message a coordinator</b>.${owner?" You're the owner: the owner page (under your name) is where people are let in, levels and centers change, and data loads.":""}</p>`)}
+  </div>`;
+}
 
 /* ---------- Approved events: what LEAD said yes to, coming up, with readiness ---------- */
 function tmEventTileRd(e){const d=rdForEvent(e.id),sc=d?rdScore(d):null;
@@ -952,7 +1032,7 @@ function tmAnswer(k){
     return tmSay("bot",(ev.length+pr.length+mt.length)?`Today: ${[mt.length?mt.length+" meeting"+(mt.length===1?"":"s"):"",ev.length?ev.length+" event"+(ev.length===1?"":"s"):"",pr.length?pr.length+" program"+(pr.length===1?"":"s"):""].filter(Boolean).join(", ")}.<ul>${mt.map(m=>`<li>${esc((m.time?tmClock(m.time)+" ":"")+(m.title||"Meeting"))}</li>`).join("")}${ev.slice(0,5).map(e=>`<li><button class="linkbtn" data-ask-go="${esc(e.id)}">${esc(e.name)}</button>${e.time?" · "+esc(e.time):""}</li>`).join("")}${pr.slice(0,5).map(p=>`<li>${esc(p.n)}${p.t?" · "+esc(p.t):""}</li>`).join("")}</ul>`:"Nothing on the calendar for today.");}
   if(k==="whoin"){if(!tmX())return tmSay("bot","Check-ins work on the team site.");const L=tmInToday();return tmSay("bot",(L.length?`In the office today: ${L.map(p=>`<b>${esc(p.name)}</b>${p.center?" ("+esc(tmCenterName(p.center))+")":""}`).join(", ")}.`:"Nobody has checked in today.")+` <button class="linkbtn" data-ask-ci="${tmAmIn()?"0":"1"}">${tmAmIn()?"Check me out":"Check me in"}</button>`);}
   if(k==="sigs"){const st=S.settings||{},g=st.sigGoal||500,sg=sigTotals(),pl=tmSigsToday();return tmSay("bot",`<b>${sg.all}</b> of ${g} signatures so far${pl?`, ${pl} logged today`:""}.`);}
-  if(k==="help")return tmSay("bot",`I can:<ul><li>answer <b>when's the next meeting</b>, <b>what's on today</b>, <b>who's in</b>, <b>how many signatures</b></li><li><b>search</b> people, events, tasks and apps: just type a name</li><li><b>message Iris: running late</b>, or <b>message a coordinator</b></li><li><b>check me in</b> / <b>check me out</b></li><li><b>/feedback</b> for the training or demo form</li><li><b>/inquiry</b> followed by a question, to reason over the hub's data${tmAIOn()?"":" (once the owner adds the key)"}</li></ul>`);
+  if(k==="help")return tmSay("bot",`Type <b>/guide</b> for the demo guide. I can:<ul><li>answer <b>when's the next meeting</b>, <b>what's on today</b>, <b>who's in</b>, <b>how many signatures</b></li><li><b>search</b> people, events, tasks and apps: just type a name</li><li><b>message Iris: running late</b>, or <b>message a coordinator</b></li><li><b>check me in</b> / <b>check me out</b></li><li><b>/feedback</b> for the training or demo form</li><li><b>/inquiry</b> followed by a question, to reason over the hub's data${tmAIOn()?"":" (once the owner adds the key)"}</li></ul>`);
 }
 async function tmSend(to,text){
   const x=tmX();if(!x)return tmSay("bot","Messages work on the team site.");
@@ -964,8 +1044,9 @@ function tmAsk(text){
   tmSay("me",esc(text));
   if(TM.to){const to=TM.to;TM.to=null;tmSend(to,text);return;}
   const t=text.toLowerCase();
-  if(t==="/feedback"||t==="/help"||t.startsWith("/inquiry")||t==="/in"||t==="/out"){
+  if(t==="/feedback"||t==="/help"||t.startsWith("/inquiry")||t==="/in"||t==="/out"||t==="/guide"){
     if(t==="/feedback")return tmFeedback();
+    if(t==="/guide"){tmAskToggle(false);return go("guide");}
     if(t==="/help")return tmAnswer("help");
     if(t==="/in")return tmCheckIn(true);
     if(t==="/out")return tmCheckIn(false);
