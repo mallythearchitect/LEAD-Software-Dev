@@ -3409,9 +3409,12 @@ function tmDoNowBlock(max){
 }
 function tmWeek(){
   const E=allE(),t0=todayISO(),days=[];for(let i=0;i<7;i++)days.push(addDays(t0,i));
-  return `<section class="sec th-week"><div class="h"><h2>This week</h2><span class="meta">green = you can table · color bar = center program</span><span class="sp"></span>${tabOK("center")?`<button class="btn sm" data-go2="center">Calendar</button>`:""}${tabOK("events")?`<button class="btn sm ghost" data-go2="events">All events</button>`:""}</div>
-    <div class="week">${days.map((dd,i)=>{const evs=E.filter(e=>e.date===dd||(e.end_date&&e.date<=dd&&e.end_date>=dd)).sort((a,b)=>(a.time||"").localeCompare(b.time||""));let extra="";try{extra=ctrWeekChips(dd)+cuWeekChips(dd);}catch(e){}
-      return `<div class="day ${i===0?"today":""}"><div class="d"><b>${parseISO(dd).getDate()}</b>${DOW[parseISO(dd).getDay()]}</div>${evs.slice(0,4).map(e=>`<div class="ev ${e.can_table===true?"table":""}" data-open="${e.id}">${esc(e.name)}<div class="t">${esc((e.time||"").split("–")[0].split(" - ")[0].trim())} ${esc(townOf(e))}</div></div>`).join("")}${evs.length>4?`<button class="ev more" data-act="week-more">+${evs.length-4} more</button>`:""}${extra||(!evs.length?`<div class="muted" style="font-size:12px">—</div>`:"")}</div>`;}).join("")}</div>
+  const when=t=>{const x=tm24(t);return x?tmClock(t).replace(":00",""):"";};
+  const chip=e=>`<button class="wk-ev" data-open="${e.id}" style="--tc:var(--t-${TM_EV_TONE[e.event_type]||"blue"})"><span class="t">${esc(when(e.time)||(e.can_table===true?"table":""))}</span><span class="n">${esc(e.name)}</span></button>`;
+  const prog=(p,dd)=>`<button class="wk-ev prog" data-ctr="${p.id}" data-d="${dd}" style="--tc:${p.color}"><span class="t">${esc(ctrStart(p).replace(":00",""))}</span><span class="n">${esc(p.short)}</span></button>`;
+  return `<section class="sec th-week"><div class="h"><h2>This week</h2><span class="sp"></span>${tabOK("center")?`<button class="btn sm" data-go2="center">Calendar</button>`:""}${tabOK("events")?`<button class="btn sm ghost" data-go2="events">All events</button>`:""}</div>
+    <div class="wk">${days.map((dd,i)=>{const d=parseISO(dd);const evs=E.filter(e=>e.date===dd||(e.end_date&&e.date<=dd&&e.end_date>=dd)).sort((a,b)=>(tm24(a.time)||"99")<(tm24(b.time)||"99")?-1:1);let progs=[];try{progs=ctrOn(dd);}catch(e){}
+      const n=evs.length+progs.length;return `<div class="wk-day ${i===0?"today":""}"><div class="wk-h"><small>${DOW[d.getDay()]}</small><b>${d.getDate()}</b></div><div class="wk-list">${evs.slice(0,3).map(chip).join("")}${progs.slice(0,2).map(p=>prog(p,dd)).join("")}${n>5?`<button class="wk-more" data-act="week-more">+${n-5} more</button>`:""}${!n?`<span class="wk-none">—</span>`:""}</div></div>`;}).join("")}</div>
   </section>`;
 }
 function tmMeetingsBlock(mine){
@@ -3423,8 +3426,8 @@ function tmMeetingsBlock(mine){
 }
 function tmCampaign(){
   return `${tmTodayPanel()}
-  ${tmWeek()}
   <div class="th-secs2">${TM_SECTIONS.map(tmSectionBlock).join("")}</div>
+  ${tmWeek()}
   ${tmMeetingsBlock(false)}`;
 }
 function tmMeetingsTodaySheet(){const t0=todayISO(),key=m=>tm24(m.time)||"99";
@@ -3864,15 +3867,17 @@ rPlaybook=function(){
   return html;};
 function tmTrainingInbox(){
   const me=tmMe(),lead=tmLeadish(),owner=!!(FB&&FB.owner);
-  const all=S.questions.filter(q=>q.team||owner||q.by===me).sort((a,b)=>(a.createdAt||"")<(b.createdAt||"")?1:-1);
+  const all=S.questions.filter(q=>q.team).sort((a,b)=>(a.createdAt||"")<(b.createdAt||"")?1:-1);
   const open=all.filter(q=>q.status!=="answered"),ans=all.filter(q=>q.status==="answered");
+  const mine=owner?S.questions.filter(q=>!q.team):[];
   const card=q=>`<div class="tq ${q.status==="answered"?"done":""}"><div class="tq-q">${esc(q.q)}</div><div class="tq-m">${esc([q.name||(q.team?"":"your note"),q.createdAt?"asked "+fmtDate(q.createdAt):"",!q.team&&q.askWho?"ask "+q.askWho:""].filter(Boolean).join(" · "))}</div>${q.answer?`<div class="tq-a">${linkify(q.answer)}${q.answeredBy?`<small>${esc(q.answeredBy)}${q.answeredAt?" · "+esc(fmtDate(q.answeredAt)):""}</small>`:""}</div>`:""}<div class="tq-acts">${S.canWrite===false?"":`${lead?`<button class="btn sm ${q.answer?"":"pri"}" data-tm="q-answer" data-id="${q.id}">${q.answer?"Edit the answer":"Answer"}</button>`:""}${lead&&q.answer?`<button class="btn sm" data-tm="q-howto" data-id="${q.id}">Make it a how-to</button>`:""}${owner||q.by===me?`<button class="btn sm ghost" data-act="q-open" data-id="${q.id}">Edit</button>`:""}`}</div></div>`;
-  return `<div class="tq-ask"><label for="tqIn">How do I…?</label><div class="tq-row"><input id="tqIn" placeholder="Ask how to do something at LEAD. A coordinator answers here, and the answer becomes a how-to." autocomplete="off"><button class="btn pri" data-tm="q-ask">Ask</button></div></div>
-  <h3 class="ev-wk">Open · ${open.length}</h3>${open.map(card).join("")||`<p class="empty">Nothing open. Ask away.</p>`}
-  <h3 class="ev-wk">Answered · ${ans.length}</h3>${ans.map(card).join("")||`<p class="empty">Answers show here once a coordinator replies.</p>`}`;}
+  return `<div class="tq-ask"><label for="tqIn">What do you want training on?</label><p class="muted small" style="margin:-4px 0 10px">Send in anything you want to learn or can't find: how to log a shift, what to say at a table, how approvals work. Coordinators answer here, and answers become how-tos.</p><div class="tq-row"><input id="tqIn" placeholder="I want to learn how to…" autocomplete="off"><button class="btn pri" data-tm="q-ask">Send</button></div></div>
+  <h3 class="ev-wk">Requests from the team · ${open.length}</h3>${open.map(card).join("")||`<p class="empty">No requests yet. Be the first.</p>`}
+  <h3 class="ev-wk">Answered · ${ans.length}</h3>${ans.map(card).join("")||`<p class="empty">Answers show here once a coordinator replies.</p>`}
+  ${mine.length?`<details class="ht" style="margin-top:18px"><summary><span class="ht-t">Your own open questions and notes</span><span class="ht-l">only you see these · ${mine.length}</span></summary><div class="ht-b">${mine.map(card).join("")}</div></details>`:""}`;}
 async function tmAskQuestion(v){const i=v.querySelector("#tqIn");if(!i)return;const q=i.value.trim();if(!q){i.focus();return;}
   const ok=await write("questions",uid("q"),{q,askWho:"",lane:"",answer:"",status:"open",createdAt:todayISO(),team:true,by:tmMe(),name:ME().name,center:FB?FB.center||"":""});
-  if(ok){i.value="";toast("Asked. A coordinator will answer here.");tmLog("question","asked how to: "+q.slice(0,120));}}
+  if(ok){i.value="";toast("Sent. A coordinator will answer here.");tmLog("question","asked for training on: "+q.slice(0,120));}}
 function tmAnswerQuestion(id){const q=S.questions.find(x=>x.id===id);if(!q)return;
   openSheet("Answer",`<div class="ms"><p class="tq-q" style="margin:0 0 10px">${esc(q.q)}</p><textarea id="tqAns" class="gf-ta" style="min-height:120px" placeholder="Write the answer the way you'd say it">${esc(q.answer||"")}</textarea></div>`,
     {btns:`<button class="btn pri" id="tqSave">Save answer</button><button class="btn ghost" data-close="1">Cancel</button>`});

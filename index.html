@@ -1606,6 +1606,20 @@ button.th-m:hover,button.th-m:focus-visible{border-color:var(--tc)}
 .k-ready{background:var(--gold-soft);color:var(--gold)}
 .k-proposal{background:var(--surface2);color:var(--ink)}
 .th-week .week{margin-top:2px}
+.wk{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:8px}
+.wk-day{background:var(--surface2);border-radius:14px;padding:8px;min-height:124px;display:flex;flex-direction:column;gap:6px;min-width:0}
+.wk-day.today{box-shadow:inset 0 0 0 2px var(--lead-blue)}
+.wk-h{display:flex;align-items:baseline;gap:6px;padding:0 2px}
+.wk-h small{font-size:10.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.wk-h b{font:800 18px var(--display)}
+.wk-list{display:flex;flex-direction:column;gap:4px}
+.wk-ev{display:flex;flex-direction:column;align-items:flex-start;gap:1px;width:100%;text-align:left;background:var(--surface);border:0;border-left:3px solid var(--tc);border-radius:8px;padding:5px 8px;cursor:pointer;color:var(--ink);font:inherit;min-width:0}
+.wk-ev:hover{background:color-mix(in srgb,var(--tc) 16%,var(--surface))}
+.wk-ev .t{font-size:10.5px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.04em}
+.wk-ev .n{font-size:12.5px;font-weight:600;line-height:1.25;width:100%;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.wk-more{background:none;border:0;color:var(--blue);font:600 12px var(--body);cursor:pointer;text-align:left;padding:2px 4px}
+.wk-none{color:var(--muted);font-size:12px;padding:2px 4px}
+@media (max-width:860px){.wk{grid-template-columns:repeat(7,minmax(118px,1fr));overflow-x:auto;padding-bottom:6px;scrollbar-width:thin}}
 
 .th-tools{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:10px}
 .th-tool{display:flex;gap:12px;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:12px 14px;cursor:pointer;color:var(--ink);text-align:left;font:inherit;min-width:0;--tc:var(--t-gold)}
@@ -2018,6 +2032,6 @@ select.gf-in{padding:8px 0}
   </div>
 </div>
 <noscript><p style="padding:24px;font:16px system-ui">LEAD needs JavaScript turned on.</p></noscript>
-<script type="module" src="js/gate.js?v=202611090225"></script>
+<script type="module" src="js/gate.js?v=202611090228"></script>
 </body>
 </html>
