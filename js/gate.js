@@ -266,7 +266,7 @@ function teamApi(u, acc, isOwner) {
     watchFeedback: lead ? cb => FBX.watchFeedback(cb, warn("feedback")) : null,
     getCodes: c => FBX.getCodes(c),
     listRoster: () => FBX.listRoster(),
-    getAI: () => FBX.getAI(),
+    getAI: () => (FBX.getAI ? FBX.getAI() : Promise.resolve(null)),
     setCenter: c => FBX.updateMyAccess(u.email, { center: c }),
     setViewCenters: list => FBX.updateMyAccess(u.email, { viewCenters: list }),
   };
@@ -351,7 +351,7 @@ function mountAccount(u, acc, isOwner) {
 async function main() {
   if (!(await isUnlocked())) await lockScreen($("#gateBody"), OFFLINE ? "Offline test: made-up people and data. Nothing leaves this computer." : "");
   loading("Checking sign-in…");
-  try { FBX = await import(OFFLINE ? "./dev/mock-fb.js" : "./lead-fb.js"); }
+  try { FBX = await import((OFFLINE ? "./dev/mock-fb.js" : "./lead-fb.js") + (VERSION ? "?v=" + encodeURIComponent(VERSION) : "")); }
   catch (e) { return fail("Couldn't load the sign-in screen", e); }
   if (!FBX.configured()) return notConfigured();
   try { await FBX.init(); } catch (e) { return fail("Couldn't reach the team database", e); }

@@ -3297,7 +3297,24 @@ function tmRepaint(){if(TM.ready&&["home","resources","org"].includes(S.tab)){if
   try{x.watchSent(L=>{TM.sent=L;tmAskPaint();});}catch(e){console.warn("[hub] messages",e);}
   if(x.watchFeedback){try{x.watchFeedback(L=>{TM.feedback=L;tmRepaint();});}catch(e){console.warn("[hub] feedback",e);}}
   try{x.joinDirectory().catch(e=>console.warn("[hub] team list entry",e&&e.code||e));}catch(e){}
+  // a quiet heartbeat while the tab is open, so teammates can see who's active (like a green dot)
+  const beat=()=>{if(document.visibilityState==="visible"){try{x.joinDirectory().catch(()=>{});}catch(e){}}};
+  setInterval(beat,4*60*1000);document.addEventListener("visibilitychange",beat);
+  try{x.listRoster().then(L=>{TM.roster=L||[];tmRepaint();}).catch(e=>{TM.roster=[];console.warn("[hub] name list",e&&e.code||e);});}catch(e){TM.roster=[];}
 })();
+const tmActive=p=>!!(p&&p.at&&Date.now()-p.at<10*60*1000);
+function tmSeen(p){if(!p||!p.at)return "";const m=Math.round((Date.now()-p.at)/60000);if(m<10)return "active now";if(m<60)return `seen ${m} min ago`;const h=Math.round(m/60);if(h<24)return `seen ${h} hr ago`;return "seen "+new Date(p.at).toLocaleDateString([],{month:"short",day:"numeric"});}
+const tmDot=p=>`<i class="tw-dot ${tmActive(p)?"on":""}" title="${esc(tmSeen(p))}"></i>`;
+/* Everyone on the team, by level: people who have signed in, plus names from the owner's list who haven't yet. */
+function tmTeam(){
+  const dir=tmPeople(),roster=TM.roster||[];
+  const norm=s=>String(s||"").toLowerCase().replace(/[^a-z\s]/g," ").replace(/\s+/g," ").trim();
+  const seen=dir.map(p=>norm(p.name));
+  const onList=r=>{const n=norm(r.name);if(!n)return true;return seen.some(s=>s===n||(n.split(" ").length===1&&s.split(" ")[0]===n));};
+  return TM_LEVELS.map(([role,label,tc])=>({role,label,tc,
+    in:dir.filter(p=>p.role===role).sort((a,b)=>(a.name||"").localeCompare(b.name||"")),
+    pending:roster.filter(r=>r.role===role&&!onList(r)).sort((a,b)=>(a.name||"").localeCompare(b.name||""))}));
+}
 
 /* ---------- Home ---------- */
 function tmHome(){
@@ -3338,6 +3355,24 @@ function tmTodayPanel(){
     <div class="th-ms">${cards.join("")}</div>${byc}
   </section>`;
 }
+function tmSectionStat(s){
+  const t0=todayISO(),ws=weekStart(),we=addDays(ws,6);let stat="";
+  try{
+    if(s.id==="events"){const n=allE().filter(e=>e.date&&e.date>=t0&&e.date<=addDays(t0,6)).length;stat=`<b class="num">${n}</b> in the next 7 days`;}
+    else if(s.id==="programming"){const n=tmProgramsOn(t0).length,c=S.sessions.filter(x=>x.date>=ws&&x.date<=we).length;stat=`<b class="num">${n}</b> today · ${c} class${c===1?"":"es"} this week`;}
+    else if(s.id==="meetings"){const nx=tmNextMeeting(),open=S.tasks.filter(t=>t.status!=="done").length;stat=nx?`Next: <b>${esc(tmWhen(nx.date,nx.time))}</b>`:`<b class="num">${open}</b> open tasks`;}
+    else if(s.id==="canvassing"){const sg=sigTotals();stat=`<b class="num">${sg.all}</b> signatures`;}
+  }catch(e){}
+  return stat;
+}
+function tmSectionBlock(s){
+  const L=tmApps(s.apps);if(!L.length)return "";
+  const cnt=id=>{const el=document.querySelector(`.appstrip [data-tab="${id}"] .cnt`);return el&&el.textContent?`<small>${esc(el.textContent)}</small>`:"";};
+  return `<section class="th-sec2" style="--tc:var(--t-${s.tc})" aria-label="${esc(s.name)}">
+    <div class="th-sec2-h"><span class="th-chip">${icon(L[0].id)}</span><div><h2>${esc(s.name)}</h2><p>${esc(s.blurb)}</p></div><span class="sp"></span><span class="th-stat">${tmSectionStat(s)}</span></div>
+    <div class="th-icons">${L.map(a=>`<button class="tile" data-go2="${a.id}" style="--tc:var(--t-${a.tc})" title="${esc(appName(a))}"><span class="face">${tileFace(a)}</span><span class="lbl">${esc(appName(a))}${cnt(a.id)}</span></button>`).join("")}</div>
+  </section>`;
+}
 function tmSectionCard(s){
   const L=tmApps(s.apps);if(!L.length)return "";
   const t0=todayISO(),ws=weekStart(),we=addDays(ws,6);let stat="";
@@ -3354,12 +3389,12 @@ function tmSectionCard(s){
     <div class="th-apps">${L.map(a=>`<button data-go2="${a.id}"><span class="ic">${icon(a.id)}</span><span class="n">${esc(appName(a))}</span>${cnt(a.id)}</button>`).join("")}</div>
   </section>`;
 }
-function tmDoNowBlock(){
+function tmDoNowBlock(max){
   if(!tabOK("tasks"))return "";
-  const L=tmDoNow();
+  const L=tmDoNow(),n=max||7;
   return `<section class="sec th-do"><div class="h"><h2>Do now</h2>${tmDemo()?`<span class="pill sand">Demo</span>`:""}<span class="meta">${L.length} item${L.length===1?"":"s"}</span><span class="sp"></span><button class="btn sm" data-tm="board">Board</button><button class="btn sm" data-act="task-add">+ Task</button></div>
-    <div class="rows">${L.slice(0,7).map(x=>`<button class="row th-do-r" data-tm="board" data-k="${x.kind}" data-id="${esc(x.id)}"><span class="kind k-${x.kind}">${TM_KIND[x.kind]}</span><span class="txt"><span class="n">${esc(x.n)}</span><span class="d">${esc(x.d||"")}</span></span><span class="r">${tmDue(x)}</span></button>`).join("")||`<p class="empty">${S.loaded.tasks?"Nothing due in the next two weeks.":ld()}</p>`}</div>
-    ${L.length>7?`<div class="small" style="margin-top:8px"><button class="linkbtn" data-tm="board">See all ${L.length} on the board</button></div>`:""}
+    <div class="rows">${L.slice(0,n).map(x=>`<button class="row th-do-r" data-tm="board" data-k="${x.kind}" data-id="${esc(x.id)}"><span class="kind k-${x.kind}">${TM_KIND[x.kind]}</span><span class="txt"><span class="n">${esc(x.n)}</span><span class="d">${esc(x.d||"")}</span></span><span class="r">${tmDue(x)}</span></button>`).join("")||`<p class="empty">${S.loaded.tasks?"Nothing due in the next two weeks.":ld()}</p>`}</div>
+    ${L.length>n?`<div class="small" style="margin-top:8px"><button class="linkbtn" data-tm="board">See all ${L.length} on the board</button></div>`:""}
   </section>`;
 }
 function tmWeek(){
@@ -3371,33 +3406,35 @@ function tmWeek(){
 }
 function tmMeetingsBlock(mine){
   if(!tabOK("meetings"))return "";
-  const L=tmUpcoming().filter(m=>!mine||tmMine(m)).slice(0,6);
-  return `<section class="sec"><div class="h"><h2>${mine?"My meetings":"Meetings coming up"}</h2><span class="meta">${mine?"yours, by name or flagged as mine":esc(FB?FB.centerLabel||"":"")}</span><span class="sp"></span><button class="btn sm" data-act="mtg-add">+ Meeting</button><button class="btn sm ghost" data-go2="meetings">All</button></div>
+  let L=tmUpcoming().filter(m=>!mine||tmMine(m)).slice(0,6);const fell=mine&&!L.length;if(fell)L=tmUpcoming().slice(0,6);
+  return `<section class="sec"><div class="h"><h2>${mine&&!fell?"My meetings":"Meetings coming up"}</h2><span class="meta">${mine?(fell?"the team's, until one is flagged as yours":"yours, by name or flagged as mine"):esc(FB?FB.centerLabel||"":"")}</span><span class="sp"></span><button class="btn sm" data-act="mtg-add">+ Meeting</button><button class="btn sm ghost" data-go2="meetings">All</button></div>
     <div class="rows">${L.map(m=>`<div class="row" data-act="mtg-open" data-id="${m.id}"><div><div class="n">${esc(m.title||"Meeting")}</div><div class="d">${esc([m.where,m.with].filter(Boolean).join(" · "))}${m.center&&tmLeadish()?` · ${esc(tmCenterName(m.center))}`:""}</div></div><div class="r">${esc(tmWhen(m.date,m.time))}</div></div>`).join("")||`<p class="empty">${mine?"No meetings of yours coming up. Add one and flag it as yours.":"No meetings coming up."}</p>`}</div>
   </section>`;
 }
 function tmCampaign(){
   return `${tmTodayPanel()}
-  <div class="th-secs">${TM_SECTIONS.map(tmSectionCard).join("")}</div>
-  <div class="th-two">${tmDoNowBlock()}${tmWeek()}</div>
-  ${tmMeetingsBlock(false)}`;
+  <div class="th-secs2">${TM_SECTIONS.map(tmSectionBlock).join("")}</div>
+  ${tmWeek()}
+  <div class="th-two">${tmMeetingsBlock(false)}${tmDoNowBlock(5)}</div>`;
 }
 function tmRole(){
-  const t0=todayISO(),nx=tabOK("meetings")?tmUpcoming().find(tmMine)||null:null,ws=weekStart(),we=addDays(ws,6);
-  const mine=S.tasks.filter(t=>t.section==="My role"&&t.status!=="done").map(t=>({...t,_x:taskDue(t)})).sort((a,b)=>(a._x.date||"9")<(b._x.date||"9")?-1:1);
+  const t0=todayISO(),ws=weekStart(),we=addDays(ws,6),up=tabOK("meetings")?tmUpcoming():[];
+  const myNx=up.find(tmMine)||null,nx=myNx||up[0]||null;
+  const own=S.tasks.filter(t=>t.section==="My role"&&t.status!=="done"),teamOpen=S.tasks.filter(t=>t.section!=="My role"&&t.status!=="done");
+  const mine=(own.length?own:teamOpen).map(t=>({...t,_x:taskDue(t)})).sort((a,b)=>(a._x.date||"9")<(b._x.date||"9")?-1:1);
   const dueNow=mine.filter(t=>t._x.days!==null&&t._x.days<=0).length;
   const cards=[];
-  if(tabOK("meetings")){const day=nx?tmWhen(nx.date,""):"";cards.push(tmMetric({l:"My next meeting",v:nx?esc(nx.time?tmClock(nx.time):day):"—",s:nx?esc((nx.title||"Meeting")+(nx.time?" · "+day:"")):"Nothing of yours scheduled",go:"meetings",tc:"orange"}));}
-  cards.push(tmMetric({l:"My tasks",v:mine.length,s:dueNow?`<span class="late">${dueNow} due today or late</span>`:"open, in My role",go:tabOK("tasks")?"tasks":"",tc:"blue"}));
+  if(tabOK("meetings")){const day=nx?tmWhen(nx.date,""):"";cards.push(tmMetric({l:myNx?"My next meeting":"Next team meeting",v:nx?esc(nx.time?tmClock(nx.time):day):"—",s:nx?esc((nx.title||"Meeting")+(nx.time?" · "+day:"")):"Nothing scheduled",go:"meetings",tc:"orange"}));}
+  cards.push(tmMetric({l:own.length?"My tasks":"Open tasks",v:mine.length,s:dueNow?`<span class="late">${dueNow} due today or late</span>`:own.length?"open, in My role":"at your center · yours show here once you add some",go:tabOK("tasks")?"tasks":"",tc:"blue"}));
   if(tabOK("hours")){const hw=S.hours.filter(x=>x.date>=ws&&x.date<=we).reduce((a,x)=>a+(+x.hours||0),0),ui=uninvoiced();
     cards.push(tmMetric({l:"Hours this week",v:Math.round(hw*10)/10,s:`${ui.h}h not invoiced yet ($${ui.amt})`,go:"hours",tc:"slate"}));}
   if(tabOK("team")){const me=ME().name,em=tmMe();const sh=S.shifts.filter(x=>x.date>=ws&&x.date<=we&&((em&&x._by===em)||(me&&x.who===me)));
     cards.push(tmMetric({l:"My shifts this week",v:sh.length,s:`${sh.reduce((a,x)=>a+(+x.sigs||0),0)} signatures`,go:"team",tc:"blue"}));}
   cards.push(tmMetric({l:"Today",v:esc(fmtDate(t0)),s:tmX()?(tmAmIn()?"You're checked in · <u>Check out</u>":"<u>I'm in the office today</u>"):"",act:tmX()?(tmAmIn()?"out":"in"):"",tc:"gold"}));
-  const tiles=tmApps([...TM_ROLE_APPS,"tasks","sig"]);
+  const tiles=tmApps([...TM_ROLE_APPS,"tasks","center","sig"]);
   return `<section class="th-today"><div class="th-h"><h2>My day</h2><span class="meta">${esc([ME().title,FB&&FB.center&&FB.center!=="all"?tmCenterName(FB.center):""].filter(Boolean).join(" · "))}</span></div><div class="th-ms">${cards.join("")}</div></section>
   <div class="th-two">
-    <section class="sec"><div class="h"><h2>My tasks</h2><span class="meta">${mine.length} open</span><span class="sp"></span><button class="btn sm" data-tm="my-task">+ Task</button></div>
+    <section class="sec"><div class="h"><h2>${own.length?"My tasks":"Open tasks"}</h2><span class="meta">${mine.length} open${own.length?"":" · the team's, until you add your own"}</span><span class="sp"></span><button class="btn sm" data-tm="my-task">+ Task</button></div>
       <div class="rows">${mine.slice(0,8).map(t=>`<div class="row static"><button class="ck" data-act="task-done" data-id="${t.id}" aria-label="Done"></button><div><div class="n" data-act="task-edit" data-id="${t.id}" style="cursor:pointer">${esc(t.title)}</div><div class="d">${esc(t.notes||"")}</div></div><div class="r">${t._x.date?esc(fmtDate(t._x.date))+"<br>"+esc(rel(t._x.days)):""}</div></div>`).join("")||`<p class="empty">Nothing on your own list. Tasks in the "My role" section only show for you.</p>`}</div>
     </section>
     ${tmMeetingsBlock(true)}
@@ -3446,8 +3483,8 @@ function tmRuns(){
 /* the bottom of Home: who to call, who's who, where LEAD posts, where the files are */
 function tmPeople(){const me=FB&&FB.me&&FB.me.name?[{id:tmMe(),name:FB.me.name,role:FB.role,center:FB.center,me:true}]:[];return TM.directory.concat(me);}
 function tmFoot(){
-  const st=S.settings||{},dir=tmPeople();
-  const names=r=>dir.filter(p=>p.role===r&&p.name).map(p=>p.name).sort();
+  const st=S.settings||{},team=tmTeam();
+  const names=r=>{const g=team.find(t=>t.role===r);return g?g.in.map(p=>p.name).concat(g.pending.map(p=>p.name)):[];};
   const ex=names("exec"),co=names("coord");
   const list=(L,empty)=>L.length?`<ul>${L.map(n=>`<li>${esc(n)}</li>`).join("")}</ul>`:`<p class="muted small">${empty}</p>`;
   return `<footer class="th-foot" aria-label="LEAD contacts and links">
@@ -3507,15 +3544,10 @@ const tmOwnerOrg=rOrg;
 rOrg=function(){
   const x=tmX();
   if(x&&TM.roster===null){TM.roster=[];x.listRoster().then(L=>{TM.roster=L||[];if(S.tab==="org")render();}).catch(e=>{console.warn("[hub] name list",e&&e.code||e);});}
-  const dir=tmPeople(),roster=TM.roster||[];
-  const norm=s=>String(s||"").toLowerCase().replace(/[^a-z\s]/g," ").replace(/\s+/g," ").trim();
-  const seen=dir.map(p=>norm(p.name));
-  const onList=r=>{const n=norm(r.name);if(!n)return true;return seen.some(s=>s===n||(n.split(" ").length===1&&s.split(" ")[0]===n));};
-  const card=(p,pending)=>`<div class="tw-p" style="--tc:var(--t-${pending?"slate":"blue"})"><span class="tw-av">${esc(tmInitials(p.name))}</span><div style="min-width:0"><b>${esc(p.name)}${p.me?" (you)":""}</b><small>${esc([p.center?tmCenterName(p.center):"",pending?"hasn't signed in yet":""].filter(Boolean).join(" · "))}</small></div>${!pending&&!p.me&&x?`<button class="btn sm" data-tm="msg" data-id="${esc(p.id)}" data-name="${esc(p.name)}">Message</button>`:""}</div>`;
-  const levels=TM_LEVELS.map(([role,label,tc])=>{const L=dir.filter(p=>p.role===role).sort((a,b)=>(a.name||"").localeCompare(b.name||""));const R=roster.filter(r=>r.role===role&&!onList(r)).sort((a,b)=>(a.name||"").localeCompare(b.name||""));
-    if(!L.length&&!R.length)return "";
-    return `<section class="tw-lv" style="--tc:var(--t-${tc})"><h3><i></i>${esc(label)}<span class="muted" style="font-weight:500;text-transform:none;letter-spacing:0">${L.length+R.length}</span></h3><div class="tw-grid">${L.map(p=>card(p,false)).join("")}${R.map(r=>card(r,true)).join("")}</div></section>`;}).join("");
-  const intro=`<p class="muted small" style="margin:2px 0 0">Everyone on the team, by level. People appear as they sign in; names from the owner's list show until then. Tap Message to send someone a note through the assistant.</p>`;
+  const card=(p,pending)=>`<div class="tw-p ${pending?"pending":""}"><span class="tw-av">${esc(tmInitials(p.name))}${pending?"":tmDot(p)}</span><div style="min-width:0"><b>${esc(p.name)}${p.me?" (you)":""}</b><small>${esc([p.center?tmCenterName(p.center):"",pending?"hasn't signed in yet":tmSeen(p)].filter(Boolean).join(" · "))}</small></div>${!pending&&!p.me&&x?`<button class="btn sm" data-tm="msg" data-id="${esc(p.id)}" data-name="${esc(p.name)}">Message</button>`:""}</div>`;
+  const levels=tmTeam().map(g=>{if(!g.in.length&&!g.pending.length)return "";
+    return `<section class="tw-lv" style="--tc:var(--t-${g.tc})"><h3><i></i>${esc(g.label)}<span class="muted" style="font-weight:500;text-transform:none;letter-spacing:0">${g.in.length+g.pending.length}</span></h3><div class="tw-grid">${g.in.map(p=>card(p,false)).join("")}${g.pending.map(r=>card(r,true)).join("")}</div></section>`;}).join("");
+  const intro=`<p class="muted small" style="margin:2px 0 0">The team by level, from the owner's list. A green dot means they have LEAD open right now. Tap Message to send someone a note through the assistant.</p>`;
   const mine=FB&&FB.owner?`<h3 style="margin:28px 0 6px">Who to ask for what</h3>`+tmOwnerOrg():"";
   return intro+(levels||`<p class="empty">${x?"Nobody is on the team list yet. People appear here as they sign in.":"The team list lives on the team site."}</p>`)+mine;
 };
@@ -3748,7 +3780,8 @@ function tmAskPaint(){
   const n=$("#askN");if(n){const u=tmUnread();n.hidden=!u;n.textContent=u;}
   const p=$("#askPanel");if(!p||p.hidden)return;
   const tab=TM.askTab,u=tmUnread();
-  const head=`<div class="ask-h"><b>Ask LEAD</b><div class="ask-tabs" role="tablist"><button role="tab" aria-selected="${tab==="ask"}" data-ask-tab="ask">Assistant</button>${tmX()?`<button role="tab" aria-selected="${tab==="msgs"}" data-ask-tab="msgs">Messages${u?` <i>${u}</i>`:""}</button>`:""}</div><button class="ask-x" data-ask-close aria-label="Close">×</button></div>`;
+  const head=`<div class="ask-h"><b>Ask LEAD</b><div class="ask-tabs" role="tablist"><button role="tab" aria-selected="${tab==="ask"}" data-ask-tab="ask">Assistant</button>${tmX()?`<button role="tab" aria-selected="${tab==="msgs"}" data-ask-tab="msgs">Messages${u?` <i>${u}</i>`:""}</button>`:""}</div><button class="ask-x" data-ask-min aria-label="${TM.askMin?"Expand":"Minimize"}" title="${TM.askMin?"Expand":"Minimize"}">${TM.askMin?"▴":"▾"}</button><button class="ask-x" data-ask-close aria-label="Close">×</button></div>`;
+  p.classList.toggle("min",!!TM.askMin);
   let body;
   if(tab==="msgs")body=tmAskMsgs();
   else body=`<div class="ask-log" id="askLog" aria-live="polite">${TM.thread.map(m=>`<div class="ask-m ${m.who}">${m.html}</div>`).join("")}</div>
@@ -3760,6 +3793,8 @@ function tmAskPaint(){
   if(keep!==null){const i=$("#askIn");if(i){i.value=keep;i.focus();}}
   const log=$("#askLog");if(log)log.scrollTop=log.scrollHeight;
   p.querySelector("[data-ask-close]").onclick=()=>tmAskToggle(false);
+  p.querySelector("[data-ask-min]").onclick=()=>{TM.askMin=!TM.askMin;tmAskPaint();};
+  p.querySelector(".ask-h").addEventListener("click",e=>{if(TM.askMin&&!e.target.closest("button")){TM.askMin=false;tmAskPaint();}});
   p.querySelectorAll("[data-ask-tab]").forEach(x=>x.onclick=()=>{TM.askTab=x.dataset.askTab;tmAskPaint();if(TM.askTab==="msgs")tmMarkRead();});
   p.querySelectorAll("[data-ask-q]").forEach(x=>x.onclick=()=>tmAskQuick(x.dataset.askQ));
   p.querySelectorAll("[data-ask-ci]").forEach(x=>x.onclick=()=>tmCheckIn(x.dataset.askCi==="1"));
@@ -3780,7 +3815,7 @@ async function tmMarkRead(){const x=tmX();if(!x)return;for(const m of TM.inbox.f
 function tmPeoplePick(role,label){
   const L=TM.directory.filter(p=>!role||p.role===role).sort((a,b)=>(a.name||"").localeCompare(b.name||""));
   if(!L.length)return tmSay("bot",`I don't see any ${label} on the team list yet. People show up after they sign in to the team site.`);
-  tmSay("bot",`Who should get it?<div class="ask-people">${L.slice(0,30).map(p=>`<button data-ask-to="${esc(p.id)}">${esc(p.name)}<small>${esc([TM_ROLE_LABEL[p.role]||"",tmCenterName(p.center)].filter(Boolean).join(" · "))}</small></button>`).join("")}</div>`);
+  tmSay("bot",`Who should get it?<div class="ask-people">${L.slice(0,30).map(p=>`<button data-ask-to="${esc(p.id)}">${tmDot(p)}${esc(p.name)}<small>${esc([TM_ROLE_LABEL[p.role]||"",tmCenterName(p.center),tmSeen(p)].filter(Boolean).join(" · "))}</small></button>`).join("")}</div>`);
 }
 function tmAskQuick(k){
   const q=TM_QUICK.find(x=>x[0]===k);
@@ -3855,7 +3890,7 @@ function tmSearch(q){
 
 /* ---------- /inquiry: reasoning over the hub's data with Claude (the owner adds the key on the owner page) ---------- */
 const tmAIOn=()=>!!(TM.ai&&TM.ai.key);
-(function tmLoadAI(){const x=tmX();if(!x||!x.getAI){TM.ai=null;return;}x.getAI().then(c=>{TM.ai=c&&c.key?c:null;}).catch(()=>{TM.ai=null;});})();
+(function tmLoadAI(){try{const x=tmX();if(!x||!x.getAI){TM.ai=null;return;}x.getAI().then(c=>{TM.ai=c&&c.key?c:null;}).catch(()=>{TM.ai=null;});}catch(e){TM.ai=null;}})();
 const TM_AI_SYSTEM="You are LEAD's assistant inside the team's hub. LEAD is Leaders for Educational Advocacy and Diversity, a community organization in Connecticut; the people asking are organizers at its centers. Answer in plain, short sentences. Use only the hub data provided with the question; when the answer isn't in it, say so and name the hub page where it would be. Never invent names, numbers, dates or phone numbers. Don't repeat the data back; answer the question, then stop. Stay under 120 words unless a list is asked for. Plain text, no markdown headings.";
 function tmAIContext(q){
   const t0=todayISO(),words=q.toLowerCase().split(/[^a-z0-9']+/).filter(w=>w.length>2),parts=[];

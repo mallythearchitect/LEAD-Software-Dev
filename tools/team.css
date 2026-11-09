@@ -154,13 +154,35 @@ button.th-m:hover,button.th-m:focus-visible{border-color:var(--tc)}
 .th-foot a{color:var(--ink);text-decoration:none;border-bottom:1px solid var(--line)}
 .th-foot a:hover{color:var(--blue);border-bottom-color:var(--blue)}
 
+/* sections as headers with icon-style apps under each */
+.th-secs2{display:flex;flex-direction:column;gap:34px;padding:10px 0 6px}
+.th-sec2-h{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding-bottom:10px;border-bottom:1px solid var(--line)}
+.th-sec2-h h2{font:800 24px/1.1 var(--display);letter-spacing:-.015em}
+.th-sec2-h p{margin:2px 0 0;font-size:13px;color:var(--muted)}
+.th-sec2-h .th-stat{font-size:13px;color:var(--muted);padding:0}
+.th-icons{display:flex;flex-wrap:wrap;gap:18px 22px;padding:16px 6px 2px}
+.th-icons .tile{width:104px}
+.th-icons .tile .face{width:84px;height:84px;border-radius:22px}
+.th-icons .tile .face svg{width:36px;height:36px}
+.th-icons .tile .lbl{display:flex;flex-direction:column;align-items:center;gap:2px}
+.th-icons .tile .lbl small{font-size:11px;color:var(--muted);font-weight:600}
+.th-icons .tile:hover{color:var(--ink)}
+.tw-dot{position:absolute;right:-1px;bottom:-1px;width:11px;height:11px;border-radius:50%;background:var(--muted);border:2px solid var(--surface)}
+.tw-dot.on{background:var(--lead-green)}
+.ask-people button{position:relative;padding-left:22px}
+.ask-people .tw-dot{left:7px;right:auto;top:11px;bottom:auto;width:9px;height:9px;border-width:1px}
+.ask-panel.min{height:auto}
+.ask-panel.min>*:not(.ask-h){display:none}
+.ask-panel.min .ask-h{cursor:pointer}
+
 /* ---------- Who's who: the team by level ---------- */
 .tw-lv{margin-top:12px}
 .tw-lv h3{display:flex;align-items:center;gap:8px;font:700 12px var(--body);text-transform:uppercase;letter-spacing:.09em;color:var(--muted);margin:0 0 8px}
 .tw-lv h3 i{width:10px;height:10px;border-radius:3px;background:var(--tc)}
 .tw-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:8px}
 .tw-p{display:flex;gap:10px;align-items:center;background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--tc);border-radius:12px;padding:9px 11px;min-width:0}
-.tw-av{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;background:color-mix(in srgb,var(--tc) 22%,transparent);color:var(--ink);font:800 12px var(--display);flex:none}
+.tw-p.pending{opacity:.72;border-left-style:dashed}
+.tw-av{position:relative;width:34px;height:34px;border-radius:50%;display:grid;place-items:center;background:color-mix(in srgb,var(--tc) 22%,transparent);color:var(--ink);font:800 12px var(--display);flex:none}
 .tw-p b{display:block;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .tw-p small{display:block;font-size:12px;color:var(--muted)}
 .tw-p button{margin-left:auto}
@@ -302,6 +324,10 @@ button.th-m:hover,button.th-m:focus-visible{border-color:var(--tc)}
 }
 @media (max-width:600px){
   .th-secs{grid-template-columns:1fr}
+  .th-icons{gap:14px 10px;padding:12px 0 0;justify-content:space-between}
+  .th-icons .tile{width:76px}
+  .th-icons .tile .face{width:66px;height:66px;border-radius:18px}
+  .th-icons .tile .face svg{width:30px;height:30px}
   .th-ms{grid-template-columns:repeat(2,minmax(0,1fr))}
   .th-m b{font-size:23px}
   .th-foot{grid-template-columns:1fr 1fr}

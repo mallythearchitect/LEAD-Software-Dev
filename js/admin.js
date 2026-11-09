@@ -140,7 +140,7 @@ function notOwnerCard(owner) {
 // ---------------------------------------------------------------- owner view
 async function loadAll() {
   const [requests, access, roster, index, codes, ai] = await Promise.all([FBX.listCol("requests"), FBX.listCol("access"), FBX.listCol("roster"), FBX.getRefIndex(),
-    FBX.listCol("codes").catch(() => []), FBX.getAI().catch(() => null)]);
+    FBX.listCol("codes").catch(() => []), (FBX.getAI ? FBX.getAI() : Promise.resolve(null)).catch(() => null)]);
   S.codes = codes.map(c => c.id); S.ai = ai;
   const has = new Set(access.map(a => a.id));
   S.requests = requests.filter(r => !has.has(r.id)).sort((a, b) => (toDate(b.at) || 0) - (toDate(a.at) || 0));
