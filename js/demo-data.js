@@ -23,8 +23,19 @@ const pad = n => String(n).padStart(2, "0");
 const iso = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 const addDays = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); return x; };
 const CODES = { "east-hartford": "eh", "new-britain": "nb", waterbury: "wb", danbury: "db", bridgeport: "bp", "new-haven": "nh", norwich: "nw" };
+// A made-up signature campaign per center, named for a real Connecticut charter school nearby, so the
+// Canvass page's campaign switcher has something to switch between.
+const CAMPAIGNS = {
+  "east-hartford": ["Libertas Academy", "Libertas", "#2F60DB"], "new-britain": ["Jumoke Academy", "Jumoke", "#35AD2F"], waterbury: ["Brass City Charter School", "Brass City", "#F65F0B"],
+  danbury: ["Stamford Charter School for Excellence", "Stamford Excellence", "#FAAB0B"], bridgeport: ["Capital Prep Harbor School", "Capital Prep Harbor", "#c2307c"],
+  "new-haven": ["Amistad Academy", "Amistad", "#7a4fc0"], norwich: ["Integrated Day Charter School", "Integrated Day", "#13827b"],
+};
+export const DEMO_OTHERS_LABEL = "Demo data (made up, for centers without their own data)";
 
-export function demoBundle(today = new Date()) {
+/* opts.only: load just these centers, with no organisation-wide pieces (used next to a center's real data).
+   The full bundle (no opts) is the all-7-centers demo. */
+export function demoBundle(today = new Date(), opts = {}) {
+  const only = opts.only ? new Set(opts.only) : null;
   const r = rng(20261108);
   const pick = a => a[Math.floor(r() * a.length)];
   const person = () => `${pick(FIRST)} ${pick(LAST)}`;
@@ -32,21 +43,25 @@ export function demoBundle(today = new Date()) {
   const put = (col, id, d) => { (docs[col] = docs[col] || {})[id] = d; };
   const t0 = iso(today);
 
-  // organisation-wide pieces
-  tiers.push({ tier: "core", center: "all", data: {
+  // organisation-wide pieces (left out when loading for some centers only, so nothing real is touched)
+  if (!only) tiers.push({ tier: "core", center: "all", data: {
     REF: { FACTS: [{ title: "About this demo", items: ["Everything in this hub right now is made up for previews.", "Real work starts once each center adds its own people, events and shifts."] }] },
     LT_meta: { goal: 20, gala: iso(addDays(today, 34)), phases: [], built: t0, zones: [], help: ["<b>The ask.</b> One page, signed, addressed to the State Board of Education."],
       letter_body: "I am writing in support of a new public school option for families in our community. (Demo letter.)", verified: 0, unverified: 0,
       letter_head: "[Organization Letterhead, if applicable]", letter_sign: "Sincerely,\n\n[Your Name]\n\n[Your Title / Organization]" },
     CV: { orgs: [{ id: "demo-petition", name: "Demo School Petition", short: "Demo petition", city: "Connecticut", goal: 3500, color: "#2f6fe0", desc: "A made-up signature campaign for mock-ups.", active: true, primary: true }], spots: [], sheets: {} },
   } });
-  PLAYBOOK.forEach(([title, body, lane], i) => put("playbook", "demo-pb" + i, { title, body, lane, order: i + 1, status: "confirmed", source: "Demo", createdAt: t0, updatedAt: t0 }));
-  put("questions", "demo-q1", { q: "Which events can we table at for free?", answer: "", askWho: "Your coordinator", lane: "How LEAD works", status: "open", createdAt: t0 });
-  put("questions", "demo-q2", { q: "How many signatures does each center need by the deadline?", answer: "500 each (demo number).", askWho: "", lane: "Libertas canvassing", status: "answered", createdAt: t0 });
-  put("meta", "settings", { sigGoal: 3500, goalDate: iso(addDays(today, 37)), manual: 0, links: [] });
+  if (!only) {
+    PLAYBOOK.forEach(([title, body, lane], i) => put("playbook", "demo-pb" + i, { title, body, lane, order: i + 1, status: "confirmed", source: "Demo", createdAt: t0, updatedAt: t0 }));
+    put("questions", "demo-q1", { q: "Which events can we table at for free?", answer: "", askWho: "Your coordinator", lane: "How LEAD works", status: "open", createdAt: t0, team: true, name: "Demo teammate" });
+    put("questions", "demo-q2", { q: "How many signatures does each center need by the deadline?", answer: "500 each (demo number).", askWho: "", lane: "Libertas canvassing", status: "answered", createdAt: t0, team: true, name: "Demo teammate", answeredBy: "Demo coordinator" });
+    put("meta", "settings", { sigGoal: 3500, goalDate: iso(addDays(today, 37)), manual: 0, links: [] });
+  }
 
   CENTERS.forEach((c, ci) => {
+    if (only && !only.has(c.id)) return;
     const p = CODES[c.id] || c.id.slice(0, 2), city = c.city.replace(/, CT$/, ""), area = ci % 2 ? "203" : "860";
+    const [cpName, cpShort, cpColor] = CAMPAIGNS[c.id] || [`${city} charter (demo)`, city, "#2F60DB"], cpId = `demo-${p}`;
     const phone = n => `(${area}) 555-01${pad(n % 100)}`;
     const addr = () => `${100 + Math.floor(r() * 899)} ${pick(STREETS)}, ${city}, CT`;
     const jitter = () => (r() - 0.5) * 0.04;
@@ -61,7 +76,8 @@ export function demoBundle(today = new Date()) {
       REF: { EVENTS: events,
         MEETINGS: [{ body: `${city} Board of Education (demo)`, schedule: "Monthly, 2nd Tuesday, 7 PM", next_dates: [iso(addDays(today, 9)), iso(addDays(today, 37))], location: `${city} City Hall`, url: "", notes: "Public comment at the start of each meeting." }],
         SCHOOLS: [{ name: `${city} Demo Elementary`, kind: "Public (K-5)", town: city, address: addr(), phone: phone(90), grades: "K-5", enrollment: "420", demo: "Made-up school", leaders: ["Principal (demo)"], dates: "", calendar: "", board: "", notes: "Demo record.", source: "" }] },
-      CV: { spots: [{ date: iso(addDays(today, 3 + ci)), name: `Saturday market (${city})`, loc: `${city} Green`, time: "10:00 AM", link: "" }] },
+      CV: { orgs: [{ id: cpId, name: `${cpName} petition (demo)`, short: cpShort, city, goal: 500, goalDate: iso(addDays(today, 37)), color: cpColor, desc: `A made-up signature campaign for a ${cpName} option near ${city}.`, active: true, primary: false }],
+        spots: [{ date: iso(addDays(today, 3 + ci)), name: `Saturday market (${city})`, loc: `${city} Green`, time: "10:00 AM", link: "" }] },
     } });
 
     // canvass: team, signers, shifts
@@ -74,7 +90,7 @@ export function demoBundle(today = new Date()) {
     tiers.push({ tier: "canvass", center: c.id, data: { CV_signers: signers } });
     for (let k = 0; k < 8; k++) {
       const tm = pick(team), d = addDays(today, -Math.floor(r() * 28));
-      put("shifts", `${p}-sh${k + 1}`, { area: tm.area, back: Math.floor(r() * 4), c: tm.id, center: c.id, date: iso(d), file: "", hrs: 2, notes: "", org: "demo-petition", out: 10 + Math.floor(r() * 10), sigs: 3 + Math.floor(r() * 12), time: "10 am - 12 pm", uploaded: false, where: `${pick(events).name}`, who: tm.name, _by: "demo@example.org" });
+      put("shifts", `${p}-sh${k + 1}`, { area: tm.area, back: Math.floor(r() * 4), c: tm.id, center: c.id, date: iso(d), file: "", hrs: 2, notes: "", org: cpId, out: 10 + Math.floor(r() * 10), sigs: 3 + Math.floor(r() * 12), time: "10 am - 12 pm", uploaded: false, where: `${pick(events).name}`, who: tm.name, _by: "demo@example.org" });
     }
 
     // people & orgs, board, letters
@@ -100,7 +116,7 @@ export function demoBundle(today = new Date()) {
     }
   });
 
-  return { kind: "lead-hub-bundle", version: 1, label: "Demo data (made up, all 7 centers)", private: false, tiers, docs };
+  return { kind: "lead-hub-bundle", version: 1, label: only ? DEMO_OTHERS_LABEL : "Demo data (made up, all 7 centers)", private: false, tiers, docs };
 }
 
 export const DEMO_CANVASS_COLLECTIONS = CANVASS;

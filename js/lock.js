@@ -33,6 +33,12 @@ export async function isUnlocked() {
   return false;
 }
 
+/* True when `pw` is the team password. Used by the hub to keep signers behind the password too. */
+export async function verify(pw) {
+  if (!(window.crypto && crypto.subtle) || !pw) return false;
+  try { return (await sha(await derive(pw))) === P.check; } catch (e) { return false; }
+}
+
 /* Forget the unlock on this device (signing out, or "Lock" in the menu). */
 export function lockAgain() {
   for (const kind of ["sessionStorage", "localStorage"]) { const s = store(kind); try { if (s) s.removeItem(KEY); } catch (e) { /* storage blocked */ } }

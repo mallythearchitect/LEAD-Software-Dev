@@ -3713,6 +3713,8 @@ function tmBind(v){
     else if(a==="msg"){TM.to={id:b.dataset.id,name:b.dataset.name};TM.askTab="ask";tmAskToggle(true);tmSay("bot",`Writing to <b>${esc(b.dataset.name)}</b>. Type your message and press Send.`);}
     else if(a==="mtg")tmMeetingSheet(b.dataset.id);
     else if(a==="mtg-today")tmMeetingsTodaySheet();
+    else if(a==="sig-unlock")tmSignersGate();
+    else if(a==="tk-toggle"){const c=b.closest(".tk");const on=c.classList.toggle("open");b.setAttribute("aria-expanded",String(on));}
     else if(a==="ev-next"){const ne=tmNextEvent();if(ne)openDetail(ne.id);}
     else if(a==="rd"){const id=b.dataset.id;const d=rdForEvent(id);if(d)rdOpen(d.id);else rdCreate(id);}
     else if(a==="approve"){const id=b.dataset.id,on=b.dataset.on==="1";const ok=await saveEdit(id,{approved:!on});if(ok!==false){toast(on?"Taken off the approved list":"Approved");tmLog("event",(on?"took \"":"approved \"")+(getRec(id)||{}).name+"\""+(on?"\" off the approved list":""));}}
@@ -3905,6 +3907,31 @@ go=function(tab,keep){const prev=S.tab;tmGoNav(tab,keep);if(!TM.fromPop&&tab!==p
 window.addEventListener("popstate",e=>{const t=(e.state&&e.state.tab)||"home";TM.fromPop=true;try{if(t!==S.tab)go(t);}finally{TM.fromPop=false;}});
 try{history.replaceState({tab:S.tab},"",location.pathname+location.search+(S.tab==="home"?"":"#"+S.tab));}catch(e){}
 (function(){const hb=document.getElementById("homeBtn");if(!hb)return;hb.addEventListener("click",e=>{const up=document.querySelector("#view [data-rd-back], #view .pr-back, #view [data-act=\"prop-back\"]");if(up){e.stopImmediatePropagation();e.preventDefault();up.click();}},true);})();
+
+/* ---------- Canvass: signers stay behind the team password ---------- */
+S.cv.unlocked=(()=>{try{return sessionStorage.getItem("lead_cv_unlock")==="1";}catch(e){return false;}})();
+const tmSigners0=cvSignersView;
+cvSignersView=function(){if(FB&&!S.cv.unlocked)return `<div class="cs-lock" style="margin-top:14px"><span class="ct-ic">${CT_ICONS.door}</span><div><b>Signers are behind the team password</b><div class="small muted">Names, addresses and phone numbers of the people who signed. Type the team password once per visit.</div></div><span class="sp"></span><button class="btn pri" data-tm="sig-unlock">Show signers</button></div>`;return tmSigners0();};
+const tmDrawer0=cvDrawer;
+cvDrawer=function(id,keep){if(FB&&!S.cv.unlocked){tmSignersGate(()=>tmDrawer0(id,keep));return;}return tmDrawer0(id,keep);};
+function tmSignersGate(after){
+  openSheet("Signers",`<div class="cs-gate"><p class="small muted" style="margin:0 0 10px">The people who signed are private. Type the team password to see them on this device for this visit.</p><label for="sgPw" class="small" style="font-weight:600;display:block;margin-bottom:4px">Team password</label><input type="password" id="sgPw" autocomplete="current-password"><div class="cs-err" id="sgErr" role="alert"></div></div>`,
+    {btns:`<button class="btn pri" id="sgGo">Show signers</button><button class="btn ghost" data-close="1">Cancel</button>`});
+  const go=$("#sgGo"),pw=$("#sgPw"),er=$("#sgErr");pw.focus();
+  const run=async()=>{if(!pw.value){er.textContent="Type the team password.";pw.focus();return;}go.disabled=true;go.textContent="Checking…";
+    const ok=tmX()&&tmX().verifyPassword?await tmX().verifyPassword(pw.value):false;
+    if(!ok){go.disabled=false;go.textContent="Show signers";er.textContent="That password didn't work. Check it and try again.";pw.select();return;}
+    S.cv.unlocked=true;try{sessionStorage.setItem("lead_cv_unlock","1");}catch(e){}closeOverlay();if(after)after();else render();};
+  go.onclick=run;pw.onkeydown=e=>{if(e.key==="Enter"){e.preventDefault();run();}};}
+
+/* ---------- Tasks as cards: a chevron for more, the title for the pop-up ---------- */
+const TM_SEC_TONE={"B-LEAD":"brick","Charters & leaders":"indigo","Libertas canvassing":"blue","Board of Champions":"gold","Events":"gold","My role":"green","Other":"slate"};
+trow=function(t){const x=taskDue(t),subs=t.subtasks||[],done=subs.filter(s=>s.done).length,late=x.days!==null&&!x.done&&x.days<0,soon=x.days!==null&&!x.done&&x.days>=0&&x.days<=2;
+  return `<div class="tk ${x.done?"done":""} ${late?"late":soon?"soon":""}" style="--tc:var(--t-${TM_SEC_TONE[t.section]||"slate"})">
+    <div class="tk-top"><button class="ck ${x.done?"on":""}" data-act="task-done" data-id="${t.id}" aria-label="Done"></button><button class="tk-title" data-act="task-edit" data-id="${t.id}">${esc(t.title)}</button><button class="tk-chev" data-act="noop" data-tm="tk-toggle" aria-expanded="false" aria-label="More">›</button></div>
+    <div class="tk-meta">${x.date?`<span class="${late?"late":soon?"soon":""}">${esc(fmtDate(x.date))}${x.days!==null?" · "+esc(rel(x.days)):""}</span>`:""}${t.repeat==="weekly"?`<span>every ${DOW[Number(t.dow??4)]}</span>`:""}${t.section?`<span>${esc(t.section)}</span>`:""}${t.priority==="High"?`<span class="hi">High</span>`:""}${t.waitingOn?`<span>waiting on ${esc(t.waitingOn)}</span>`:""}${subs.length?`<span>${done}/${subs.length} steps</span>`:""}</div>
+    <div class="tk-more">${t.notes?`<p>${linkify(t.notes)}</p>`:""}${subs.length?`<ul>${subs.map(s=>`<li class="${s.done?"done":""}">${esc(s.t)}</li>`).join("")}</ul>`:""}${t.linkText?`<p class="muted small">Linked to ${esc(t.linkText)}</p>`:""}${!t.notes&&!subs.length&&!t.linkText?`<p class="muted small">No notes yet. Tap the title to add some.</p>`:""}</div>
+  </div>`;};
 
 /* ---------- Proposals: one column, like the form the group filled in ---------- */
 rProposal=function(p){const s=propScore(p),r=p.r||{},f=p.flags||{},tg=p.tags||{},ai=p.ai||{},id=p.id;

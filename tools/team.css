@@ -276,6 +276,27 @@ button.th-m:hover,button.th-m:focus-visible{border-color:var(--tc)}
 .ht-l{font-size:12px;color:var(--muted);font-weight:500}
 .ht-b{padding:0 0 16px 28px;font-size:14px;line-height:1.55;color:var(--ink)}
 
+/* ---------- tasks as cards ---------- */
+.rows:has(.tk){border-top:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:10px;margin-top:6px}
+.tk{background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--tc);border-radius:14px;padding:10px 12px;min-width:0}
+.tk.done{opacity:.6}
+.tk-top{display:flex;align-items:center;gap:10px}
+.tk .ck{width:20px;height:20px;border-radius:50%;border:2px solid var(--line);background:none;cursor:pointer;flex:none;padding:0}
+.tk .ck.on{background:var(--lead-green);border-color:var(--lead-green)}
+.tk-title{flex:1;min-width:0;text-align:left;background:none;border:0;padding:0;font:600 14.5px/1.3 var(--body);color:var(--ink);cursor:pointer}
+.tk.done .tk-title{text-decoration:line-through}
+.tk-chev{background:none;border:0;color:var(--muted);font-size:22px;line-height:1;cursor:pointer;transition:transform .15s;padding:0 4px}
+.tk.open .tk-chev{transform:rotate(90deg)}
+.tk-meta{display:flex;flex-wrap:wrap;gap:4px 8px;font-size:12px;color:var(--muted);margin:6px 0 0 30px}
+.tk-meta .late{color:var(--red);font-weight:600}.tk-meta .soon{color:var(--orange);font-weight:600}.tk-meta .hi{color:var(--orange);font-weight:600}
+.tk-more{display:none;margin:8px 0 2px 30px;font-size:13.5px;line-height:1.45}
+.tk.open .tk-more{display:block}
+.tk-more ul{margin:4px 0 0;padding-left:18px}
+.tk-more li.done{text-decoration:line-through;color:var(--muted)}
+.tk-more p{margin:0 0 6px;white-space:pre-wrap}
+.board .col{border-radius:14px}
+.board .tcard{border-radius:12px;border:1px solid var(--line);padding:10px 12px;box-shadow:none}
+
 /* ---------- proposals: one column of cards, like a form ---------- */
 .gf{max-width:780px;margin:0 auto;display:flex;flex-direction:column;gap:12px}
 .gf-card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px 22px;position:relative}

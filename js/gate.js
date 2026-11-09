@@ -6,8 +6,11 @@
 
    Trying it on this computer without Firebase: run a local server in this folder and open
    http://localhost:8765/?offline  (made-up people and data; see js/dev/mock-fb.js for ?as=). */
-import { CENTERS, CENTER_IDS, ROLES, OWNER_VIEWS, roleLabel, centerName, grantsForPages, tierAllowed, assembleData, makeHubDB } from "./lead-core.js";
-import { isUnlocked, lockScreen, lockAgain } from "./lock.js";
+const VERSION = new URL(import.meta.url).searchParams.get("v") || "";
+const stamped = p => p + (VERSION ? "?v=" + encodeURIComponent(VERSION) : "");
+// Both are loaded with gate.js's own build stamp, so a new gate never runs against a cached old copy.
+const [{ CENTERS, CENTER_IDS, ROLES, OWNER_VIEWS, roleLabel, centerName, grantsForPages, tierAllowed, assembleData, makeHubDB }, { isUnlocked, lockScreen, lockAgain, verify }] =
+  await Promise.all([import(stamped("./lead-core.js")), import(stamped("./lock.js"))]);
 
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -15,7 +18,6 @@ const HOST = location.hostname;
 const LOCAL_HOST = ["localhost", "127.0.0.1", "[::1]", "::1"].includes(HOST) || HOST.endsWith(".localhost");
 const OFFLINE = LOCAL_HOST && new URLSearchParams(location.search).has("offline");
 const keep = () => (OFFLINE ? location.search : "");            // keep the test settings when moving between pages
-const VERSION = new URL(import.meta.url).searchParams.get("v") || "";
 let FBX = null, current, linking = false;
 try { const t = localStorage.getItem("lead_hub_theme"); if (t) document.documentElement.dataset.theme = t; } catch (e) { /* no saved theme */ }
 // The old password-locked page kept its "stay unlocked" keys in this browser. The team version never
@@ -269,6 +271,7 @@ function teamApi(u, acc, isOwner) {
     getAI: () => (FBX.getAI ? FBX.getAI() : Promise.resolve(null)),
     logActivity: d => (FBX.logActivity ? FBX.logActivity({ ...d, name, center }) : Promise.resolve()),
     watchActivity: cb => (FBX.watchActivity ? FBX.watchActivity(cb, warn("activity")) : () => {}),
+    verifyPassword: pw => verify(pw),
     setCenter: c => FBX.updateMyAccess(u.email, { center: c }),
     setViewCenters: list => FBX.updateMyAccess(u.email, { viewCenters: list }),
   };
@@ -353,7 +356,7 @@ function mountAccount(u, acc, isOwner) {
 async function main() {
   if (!(await isUnlocked())) await lockScreen($("#gateBody"), OFFLINE ? "Offline test: made-up people and data. Nothing leaves this computer." : "");
   loading("Checking sign-in…");
-  try { FBX = await import((OFFLINE ? "./dev/mock-fb.js" : "./lead-fb.js") + (VERSION ? "?v=" + encodeURIComponent(VERSION) : "")); }
+  try { FBX = await import(stamped(OFFLINE ? "./dev/mock-fb.js" : "./lead-fb.js")); }
   catch (e) { return fail("Couldn't load the sign-in screen", e); }
   if (!FBX.configured()) return notConfigured();
   try { await FBX.init(); } catch (e) { return fail("Couldn't reach the team database", e); }

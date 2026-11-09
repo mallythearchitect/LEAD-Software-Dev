@@ -3,7 +3,7 @@
    the name list, and load or remove data sets. Only the hub's owner can use it; firestore.rules
    refuses everyone else, so this page is a convenience, not the lock. */
 import { CENTERS, ROLES, ROLE_ORDER, roleLabel, centerName, PAGES, TRIAL_DAYS, rosterMatches, nameScore, bundleOps, unbundleOps, refId, SCOPED, ORGWIDE, PERSONAL } from "./lead-core.js";
-import { demoBundle } from "./demo-data.js";
+import { demoBundle, DEMO_OTHERS_LABEL } from "./demo-data.js";
 import { isUnlocked, lockAgain } from "./lock.js";
 
 const $ = (s, r = document) => r.querySelector(s);
@@ -291,6 +291,8 @@ function paneData() {
           <button class="btn warn sm" data-act="set-remove" data-label="${esc(g.label)}">${g.label === DEMO_LABEL ? "Take out the demo data" : "Take out"}</button></div>`).join("")}</div>`
         : '<div class="empty">Nothing loaded yet. Start with the demo data so everyone has something to look at.</div>'}
       ${demo ? "" : `<button class="btn pri" data-act="demo-load" style="margin-top:12px">Load the demo data (made up, all 7 centers)</button>`}
+      ${(() => { const have = new Set(Object.values(S.index.sets || {}).map(x => x.center)); const empty = CENTERS.filter(c => !have.has(c.id)); const others = gs.some(g => g.label === DEMO_OTHERS_LABEL);
+        return empty.length && !others ? `<button class="btn" data-act="demo-others" style="margin-top:12px">Load demo data for the ${empty.length} center${empty.length === 1 ? "" : "s"} without data (${empty.map(centerName).join(", ")})</button>` : ""; })()}
       <div class="bar" id="bar" hidden><i></i></div></div>
     <div class="card"><h2>Load a data file</h2>
       <p class="small muted">For example <i>my-data-east-hartford.json</i> from the "Firebase import files" folder on your Desktop. Loading a file replaces the lists it carries for its centers.</p>
@@ -390,14 +392,22 @@ const ACTIONS = {
     if (!confirm(`Delete ${r.name} from the name list? This doesn't change anyone's access.`)) return;
     await FBX.delRaw("roster", r.id); toast("Deleted"); await refresh();
   },
+  async "demo-others"() {
+    const have = new Set(Object.values(S.index.sets || {}).map(x => x.center));
+    const only = CENTERS.filter(c => !have.has(c.id)).map(c => c.id);
+    if (!only.length) return toast("Every center has data already.");
+    const { ops } = bundleOps(demoBundle(new Date(), { only }), S.index, me.email, new Date().toISOString());
+    await runOps(ops, `Demo data loaded for ${only.map(centerName).join(", ")}`); await refresh();
+  },
   async "demo-load"() {
     const { ops } = bundleOps(demoBundle(), S.index, me.email, new Date().toISOString());
     await runOps(ops, "Demo data loaded"); await refresh();
   },
   async "set-remove"(btn) {
     const label = btn.dataset.label, isDemo = label === DEMO_LABEL;
-    if (!confirm(isDemo ? "Take out the demo data? This removes the made-up lists and the made-up tasks, shifts and notes that came with them." : `Take out the lists from "${label}"? Things people saved in the hub stay.`)) return;
-    const ops = isDemo ? unbundleOps(demoBundle(), S.index).ops : removeSetsOps(label);
+    if (!confirm(isDemo || label === DEMO_OTHERS_LABEL ? "Take out the demo data? This removes the made-up lists and the made-up tasks, shifts and notes that came with them." : `Take out the lists from "${label}"? Things people saved in the hub stay.`)) return;
+    const others = label === DEMO_OTHERS_LABEL ? [...new Set(Object.values(S.index.sets || {}).filter(x => x.label === label).map(x => x.center))] : null;
+    const ops = isDemo ? unbundleOps(demoBundle(), S.index).ops : others ? unbundleOps(demoBundle(new Date(), { only: others }), S.index).ops : removeSetsOps(label);
     await runOps(ops, "Taken out"); await refresh();
   },
   async "file-load"() {
