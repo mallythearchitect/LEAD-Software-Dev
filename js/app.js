@@ -3168,6 +3168,8 @@ fbSetupViews();
    - Calendar switches centers and keeps the center's codes behind the team password and the
      keyholder agreement.
    - Settings shows each person their level and center, and the look.
+   - Tutorial and Give feedback sit in the top bar. The tutorial is a guided tour that lights up each part, says
+     what it's for and what it feeds; it offers itself once, the first time someone opens LEAD.
    - A small assistant in the corner searches the hub, answers quick questions, checks you in, sends
      messages to teammates, takes /feedback, and (once the owner adds a key) answers open questions.
    No personal data in here: names, numbers and links come from the team database or are LEAD's public ones. */
@@ -3476,7 +3478,8 @@ function tmTools(onHome){
   const fbCard=`<button class="th-tool" data-tm="feedback" style="--tc:var(--t-orange)"><span class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3h11A2.5 2.5 0 0 1 20 5.5v8a2.5 2.5 0 0 1-2.5 2.5H10l-4.5 4v-4A1.5 1.5 0 0 1 4 14.5z"/><path d="M8.5 8.5h7M8.5 11.5h4.5"/></svg></span><span><b>Give feedback</b><small>On a training session or on this week's demo. Two minutes.</small></span><span class="go">Open ›</span></button>`;
   return `${onHome?"":`<p class="muted" style="margin:2px 0 0">Everything the team shares: links, Drive folders, the groups, training, who's who and LEAD's own pages.</p>`}
   <div class="th-tools">
-    ${card("guide","How to use LEAD","The demo guide: what each part does, what to try, how to give feedback","Read it ›","blue")}
+    <button class="th-tool" data-tm="tour" style="--tc:var(--t-gold)"><span class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 0 1 4.8.9c0 1.7-2.4 2.2-2.4 3.6"/><path d="M12 17h.01"/></svg></span><span><b>Take the tutorial</b><small>A guided tour: each part lit up, what it does and what it feeds. About three minutes.</small></span><span class="go">Start ›</span></button>
+    ${card("guide","How to use LEAD","The written guide: what each part does, what to try, how to give feedback","Read it ›","blue")}
     ${tabOK("sig")?card("sig","Email signature","Your LEAD signature for Gmail, with the logo and social links","Make yours ›","blue"):""}
     ${tabOK("playbook")?card("playbook","Training","How LEAD works, the script and facts, open questions","Open ›","green"):""}
     ${tabOK("org")?card("org","Who's who","The team by level and center","Open ›","orange"):""}
@@ -3716,6 +3719,7 @@ function tmBind(v){
     else if(a==="drive-edit")tmDriveForm();
     else if(a==="my-task")taskForm(null,{section:"My role",status:"todo"});
     else if(a==="feedback")tmFeedback();
+    else if(a==="tour")ttStart(0);
     else if(a==="fb-csv")tmFbDownload();
     else if(a==="fb-copy")copyText(tmFbText(),"Copied every response");
     else if(a==="codes-open")tmCodesOpen(tmCalCenter());
@@ -3800,12 +3804,13 @@ function rGuide(){
   const sec=(title,body)=>`<section class="gd-sec"><h2>${esc(title)}</h2>${body}</section>`;
   const li=items=>`<ul class="gd-list">${items.map(x=>`<li>${x}</li>`).join("")}</ul>`;
   return `<div class="gd">
-  <div class="gd-hero"><img src="img/lead-logo.png" alt="LEAD" class="gd-logo"><div><h1>How to use LEAD</h1><p>The team's hub for ${esc(FB&&FB.centerLabel||"your center")}: what's happening, what's due, who's doing what, and how LEAD runs. Tap any button to jump there.</p><div class="chips" style="margin-top:10px"><a class="btn sm pri" href="https://claude.ai/artifact/EpCCenW6LpkZXFbcUHkfpE" target="_blank" rel="noopener">Open the screenshot walkthrough ↗</a></div></div></div>
+  <div class="gd-hero"><img src="img/lead-logo.png" alt="LEAD" class="gd-logo"><div><h1>How to use LEAD</h1><p>The team's hub for ${esc(FB&&FB.centerLabel||"your center")}: what's happening, what's due, who's doing what, and how LEAD runs. Tap any button to jump there.</p><div class="chips" style="margin-top:10px"><button class="btn sm pri" data-tm="tour">Take the tutorial</button><a class="btn sm" href="https://claude.ai/artifact/EpCCenW6LpkZXFbcUHkfpE" target="_blank" rel="noopener">Open the screenshot walkthrough ↗</a></div></div></div>
   ${sec("Getting in",li([
     "Open <b>lead.thebiggercanvas.com</b>. Type the team password your coordinator gave you (tick <i>keep this device unlocked</i> on your own phone or laptop, not on a shared computer), then <b>Continue with Google</b>.",
     "First time: you'll see <i>Waiting to be let in</i>. The owner lets you in from the owner page; the page opens by itself when that happens.",
     "Assistant coordinators pick their center once. Coordinators and executives pick which centers to look at under <b>Settings</b>.",
     "Signing out locks the device again. The ‹ LEAD button at the top left always goes back."]))}
+  ${sec("How the parts connect",`<p>Nothing in LEAD stands alone. What you do in one place shows up in others:</p>${ttFlowList()}<div class="chips"><button class="btn sm" data-tm="tour">See it in the tutorial</button></div>`)}
   ${sec("Home",li([
     "<b>Campaign</b>: today's numbers (signatures, meetings today, the next event, programs today, who's in the office), then the four sections as icons, then <b>This week</b> and the meetings coming up. Tap <i>Meetings today</i> or <i>Next event</i> for a pop-up. Tap <i>I'm in today</i> to check in.",
     "<b>My role</b>: your next meeting, your tasks, your hours this week, check-in, <b>Do now</b> with the board, and your own tools.",
@@ -4107,7 +4112,7 @@ async function tmFbCopyOut(kind,name,answers){try{const x=tmX();if(!x)return;let
   catch(e){console.warn("[hub] feedback copy",e);}}
 
 /* ---------- the assistant in the corner ---------- */
-const TM_QUICK=[["next","When's the next meeting?"],["today","What's on today?"],["whoin","Who's in the office?"],["sigs","How many signatures?"],["feedback","Give feedback"],["msg-coord","Message a coordinator"],["msg-exec","Message an executive"],["msg-any","Message a teammate"],["search","Search the hub"]];
+const TM_QUICK=[["next","When's the next meeting?"],["today","What's on today?"],["whoin","Who's in the office?"],["sigs","How many signatures?"],["feedback","Give feedback"],["msg-coord","Message a coordinator"],["msg-exec","Message an executive"],["msg-any","Message a teammate"],["search","Search the hub"],["tour","Take the tutorial"]];
 function tmAskMount(){
   if(document.getElementById("askBtn"))return;
   const b=document.createElement("button");b.id="askBtn";b.className="ask-btn";b.type="button";b.setAttribute("aria-haspopup","dialog");b.setAttribute("aria-controls","askPanel");b.title="Ask LEAD";
@@ -4185,6 +4190,7 @@ function tmPeoplePick(role,label){
 function tmAskQuick(k){
   const q=TM_QUICK.find(x=>x[0]===k);
   if(k==="feedback"){tmFeedback();return;}
+  if(k==="tour"){tmAskToggle(false);ttStart(0);return;}
   if(k==="msg-coord")return tmPeoplePick("coord","coordinators");
   if(k==="msg-exec")return tmPeoplePick("exec","executives");
   if(k==="msg-any")return tmPeoplePick("","teammates");
@@ -4199,7 +4205,7 @@ function tmAnswer(k){
     return tmSay("bot",(ev.length+pr.length+mt.length)?`Today: ${[mt.length?mt.length+" meeting"+(mt.length===1?"":"s"):"",ev.length?ev.length+" event"+(ev.length===1?"":"s"):"",pr.length?pr.length+" program"+(pr.length===1?"":"s"):""].filter(Boolean).join(", ")}.<ul>${mt.map(m=>`<li>${esc((m.time?tmClock(m.time)+" ":"")+(m.title||"Meeting"))}</li>`).join("")}${ev.slice(0,5).map(e=>`<li><button class="linkbtn" data-ask-go="${esc(e.id)}">${esc(e.name)}</button>${e.time?" · "+esc(e.time):""}</li>`).join("")}${pr.slice(0,5).map(p=>`<li>${esc(p.n)}${p.t?" · "+esc(p.t):""}</li>`).join("")}</ul>`:"Nothing on the calendar for today.");}
   if(k==="whoin"){if(!tmX())return tmSay("bot","Check-ins work on the team site.");const L=tmInToday();return tmSay("bot",(L.length?`In the office today: ${L.map(p=>`<b>${esc(p.name)}</b>${p.center?" ("+esc(tmCenterName(p.center))+")":""}`).join(", ")}.`:"Nobody has checked in today.")+` <button class="linkbtn" data-ask-ci="${tmAmIn()?"0":"1"}">${tmAmIn()?"Check me out":"Check me in"}</button>`);}
   if(k==="sigs"){const st=S.settings||{},g=st.sigGoal||500,sg=sigTotals(),pl=tmSigsToday();return tmSay("bot",`<b>${sg.all}</b> of ${g} signatures so far${pl?`, ${pl} logged today`:""}.`);}
-  if(k==="help")return tmSay("bot",`Type <b>/guide</b> for the demo guide. I can:<ul><li>answer <b>when's the next meeting</b>, <b>what's on today</b>, <b>who's in</b>, <b>how many signatures</b></li><li><b>search</b> people, events, tasks and apps: just type a name</li><li><b>message Iris: running late</b>, or <b>message a coordinator</b></li><li><b>check me in</b> / <b>check me out</b></li><li><b>/feedback</b> for the training or demo form</li><li><b>/inquiry</b> followed by a question, to reason over the hub's data${tmAIOn()?"":" (once the owner adds the key)"}</li></ul>`);
+  if(k==="help")return tmSay("bot",`Type <b>/tour</b> for the tutorial or <b>/guide</b> for the written guide. I can:<ul><li>answer <b>when's the next meeting</b>, <b>what's on today</b>, <b>who's in</b>, <b>how many signatures</b></li><li><b>search</b> people, events, tasks and apps: just type a name</li><li><b>message Iris: running late</b>, or <b>message a coordinator</b></li><li><b>check me in</b> / <b>check me out</b></li><li><b>/feedback</b> for the training or demo form</li><li><b>/inquiry</b> followed by a question, to reason over the hub's data${tmAIOn()?"":" (once the owner adds the key)"}</li></ul>`);
 }
 async function tmSend(to,text){
   const x=tmX();if(!x)return tmSay("bot","Messages work on the team site.");
@@ -4211,6 +4217,7 @@ function tmAsk(text){
   tmSay("me",esc(text));
   if(TM.to){const to=TM.to;TM.to=null;tmSend(to,text);return;}
   const t=text.toLowerCase();
+  if(t==="/tour"||t==="/tutorial"){tmAskToggle(false);return ttStart(0);}
   if(t==="/feedback"||t==="/help"||t.startsWith("/inquiry")||t==="/in"||t==="/out"||t==="/guide"){
     if(t==="/feedback")return tmFeedback();
     if(t==="/guide"){tmAskToggle(false);return go("guide");}
@@ -4302,6 +4309,260 @@ async function tmInquiry(q){
   tmAskPaint();
 }
 tmAskMount();
+
+/* ---------- the tutorial: a guided tour that lights up each part, says what it's for and what it feeds ----------
+   Works like the Mindscape tour: the page dims, the part in question gets a gold ring, and a card explains it.
+   Each card also says where that part's information comes from and where it shows up, so people see how the
+   pieces of LEAD talk to each other. It starts by itself the first time someone opens LEAD (once per person per
+   browser), and again from Tutorial at the top, Tools & resources, the guide, or /tour in Ask LEAD. */
+const TT_NODE={shifts:["Canvass shifts","blue"],people:["People & orgs","blue"],events:["Events","gold"],proposals:["Proposals","gold"],ready:["Readiness","gold"],
+  meetings:["Meetings","orange"],tasks:["Tasks","orange"],board:["The board","orange"],calendar:["Calendar","green"],classes:["Classes logged","green"],
+  checkins:["Check-ins","gold"],sigs:["Signatures so far","blue"],mtgToday:["Meetings today","orange"],nextEv:["Next event","gold"],progToday:["Programs today","green"],
+  inOffice:["In the office","gold"],week:["This week","gold"],donow:["Do now","slate"],hours:["Your hours","slate"],ask:["Ask LEAD","blue"],
+  theirMsgs:["Their Messages","blue"],coordMsgs:["Coordinators' Messages","blue"],activity:["Activity","blue"],coords:["Coordinators","orange"],
+  howtos:["How-tos","green"],training:["Training","green"],takeaways:["Meeting takeaways","orange"],whos:["Who's who","orange"],feedback:["Give feedback","gold"],
+  fbList:["Feedback list","gold"],owner:["The owner","slate"],everyone:["Everyone who can see it","green"]};
+const TT_FLOWS=[
+  ["I'm in today","In the office on Home · Ask LEAD's “who's in” · Activity"],
+  ["A meeting with a time","Meetings today · My role · Ask LEAD's “next meeting”"],
+  ["A meeting's next step","a task · Do now · the board"],
+  ["A meeting's takeaway","a how-to in Training, or a question for the coordinators"],
+  ["An approved event","its readiness checklist · Submit · the coordinators' Messages"],
+  ["An event not approved yet","Submit a proposal"],
+  ["A canvass shift","Signatures so far"],
+  ["A class you log","Programs today · that program's page"],
+  ["A training question","a coordinator's answer · a how-to for everyone"],
+  ["Give feedback","the coordinators' Messages · Tools & resources → Feedback · the owner"]];
+const ttFlowList=()=>`<ul class="tt-flows">${TT_FLOWS.map(([a,b])=>`<li><b>${esc(a)}</b><i aria-hidden="true">→</i><span><span class="sr">shows up in </span>${esc(b)}</span></li>`).join("")}</ul>`;
+const TT={on:false,i:0,seq:0,steps:[],ui:null,el:null,raf:0,tick:0,from:null};
+const ttKey=()=>"lead_tour1:"+(tmMe()||"here");
+function ttSeen(){try{return !!localStorage.getItem(ttKey());}catch(e){return true;}}
+function ttMark(){try{localStorage.setItem(ttKey(),String(Date.now()));}catch(e){}}
+function ttVis(el){if(!el||!el.isConnected)return null;const r=el.getBoundingClientRect();if(r.width<2||r.height<2)return null;return getComputedStyle(el).visibility==="hidden"?null:el;}
+function ttFind(sel){for(const s of [].concat(sel||[])){for(const el of document.querySelectorAll(s))if(ttVis(el))return el;}return null;}
+function ttGo(tab){TM.fromPop=true;try{go(tab);}finally{TM.fromPop=false;}}     // the tour's moves don't pile up in the back button
+function ttHome(tab){if(S.tab!=="home")ttGo("home");if(tab&&tmTab()!==tab){S.home.tab=tab;homeSave();render();}}
+function ttFrame(){return new Promise(r=>{let d=0;const f=()=>{if(!d){d=1;r();}};requestAnimationFrame(()=>requestAnimationFrame(f));setTimeout(f,90);});}   // the page has drawn (or 90 ms, if the tab is in the background)
+function ttAsk(on){const p=$("#askPanel"),b=$("#askBtn");if(!p)return;TM.askOpen=on;if(on){TM.askMin=false;TM.askTab="ask";}p.hidden=!on;if(b)b.setAttribute("aria-expanded",String(on));document.documentElement.classList.toggle("ask-on",on);if(on)tmAskPaint();}
+
+function ttSteps(){
+  const x=tmX(),lead=tmLeadish(),owner=!!(FB&&FB.owner),first=ME().first||"";
+  const sec=id=>{const s=TM_SECTIONS.find(z=>z.id===id);return !!(s&&tmApps(s.apps).length);};
+  const L=[
+    {ch:"Welcome",title:`Welcome to LEAD${first?", "+first:""}`,
+      text:`<p>The team's hub: the campaign, events, programs, meetings and the canvass, in one place.</p><p>This tutorial lights up each part, says what it's for, and shows how the parts feed each other. About three minutes.</p><p class="tt-tip"><span class="tt-keys"><kbd>→</kbd> moves on, <kbd>←</kbd> goes back, <kbd>Esc</kbd> stops. </span>Take it again any time from <b>Tutorial</b> at the top.</p>`},
+    {ch:"Getting around",target:["#brandBtn","#homeBtn"],home:"campaign",title:"Home is one tap away",
+      text:"From any page, tap the LEAD logo at the top left to come back here. Your phone's back button works too."},
+    {ch:"Getting around",target:"#tbTour",home:"campaign",title:"Tutorial",
+      text:"This tour, whenever you want it. The written guide is under Tools & resources → <b>How to use LEAD</b>."},
+    {ch:"Getting around",target:"#tbFeedback",home:"campaign",title:"Give feedback",
+      text:"Two short forms: one after a training session, one about the LEAD app itself. Two minutes, and your name is already filled in.",
+      toLabel:"Goes to",to:["coordMsgs","fbList","owner"]},
+    {ch:"Getting around",target:".acct",home:"campaign",title:"Your name",
+      text:"Your level and center, and <b>Sign out</b>. Signing out locks this device again."+(lead?" Coordinators and executives also choose which centers to show here; every number on Home follows that choice.":"")+(owner?" The <b>Owner page</b> is in here too: letting people in, levels and centers, and data.":"")},
+    {ch:"Getting around",target:".topbar .status",home:"campaign",title:"Saved for the team",when:()=>!!x,
+      text:"A green dot means LEAD is connected. Whatever you add or change is saved right away and shows up for your teammates without a refresh.",
+      to:["everyone"]},
+    {ch:"Home",target:".th-tabs",home:"campaign",title:"Three tabs",
+      text:"<b>Campaign</b> is the whole picture. <b>My role</b> is your day. <b>Tools & resources</b> holds the links, training and people."},
+    {ch:"Home",target:".th-today",home:"campaign",title:"Today's numbers",
+      text:"Each number is fed by another part of LEAD. Tap any one to open where it comes from.",
+      from:["shifts","meetings","events","calendar","classes","checkins"]},
+    {ch:"Home",target:".th-today .th-ms > .th-m:first-child",home:"campaign",title:"Signatures so far",
+      text:"The count toward the goal. Every canvass shift you log adds to it, and so do signatures recorded at events and with people and organizations.",
+      from:["shifts","events","people"]},
+    {ch:"Home",target:".th-today .th-ms > .th-m:last-child",home:"campaign",title:"I'm in today",when:()=>!!x,
+      text:"Tap it when you're at the office. Your teammates see you in this number, in Ask LEAD's “who's in”, and in Activity.",
+      to:["inOffice","ask","activity"]},
+    {ch:"Home · Sections",target:'.th-sec2[aria-label="Events"]',home:"campaign",when:()=>sec("events"),title:"Events",
+      text:"The first of four sections. Every event is a tile. An approved event gets a readiness checklist; the rest ask for a proposal first. Proposals from partner groups land here too.",
+      to:["nextEv","week","donow"]},
+    {ch:"Home · Sections",target:'.th-sec2[aria-label="Programming"]',home:"campaign",when:()=>sec("programming"),title:"Programming",
+      text:"The center's programs, with the classes and videos for each, and the Calendar with registration and the keyholder codes.",
+      to:["progToday","week"]},
+    {ch:"Home · Sections",target:'.th-sec2[aria-label="Meetings"]',home:"campaign",when:()=>sec("meetings"),title:"Meetings",
+      text:"What was decided and who does what. One tap turns a meeting's next step into a task, and a takeaway into a how-to or a question for Training.",
+      to:["mtgToday","tasks","donow","training"]},
+    {ch:"Home · Sections",target:'.th-sec2[aria-label="Canvassing"]',home:"campaign",when:()=>sec("canvassing"),title:"Canvassing",
+      text:"Shifts, signers, supporters, letters of support and the map. Signers stay behind the team password.",
+      to:["sigs","donow"]},
+    {ch:"Home",target:".th-week",home:"campaign",title:"This week",
+      text:"The next seven days at a glance: events, and the center's programs. Tap any one to open it.",
+      from:["events","calendar"]},
+    {ch:"My role",target:".th-today",home:"role",title:"Your day",
+      text:"Your next meeting, your tasks, your hours this week, and check-in. Your hours are yours alone; nobody else sees them.",
+      from:["meetings","tasks","hours","checkins"]},
+    {ch:"My role",target:".th-do",home:"role",when:()=>tabOK("tasks"),title:"Do now",
+      text:"One list that pulls from everywhere: tasks coming due, proposals to review, events to get ready for, reports to write after an event, and people to follow up with. <b>Board</b> lays them out as cards you drag from To do to Done.",
+      from:["tasks","proposals","ready","events","people"],to:["board","activity"]},
+    {ch:"Tools & resources",target:".th-tools",home:"tools",title:"Tools & resources",
+      text:"The written guide, your email signature, Training, Who's who, Cultures, feedback and Settings. Below them: the groups, partners, the registration form and the Drive folders."},
+    {ch:"Tools & resources",target:'.th-tools [data-go2="playbook"]',home:"tools",when:()=>tabOK("playbook"),title:"Training",
+      text:"An inbox for what you want to learn. Send a question; coordinators answer, and good answers become how-tos everyone can read.",
+      from:["takeaways"],to:["coords","howtos","activity"]},
+    {ch:"Tools & resources",target:'.th-tools [data-go2="org"]',home:"tools",when:()=>tabOK("org"),title:"Who's who",
+      text:"The team by level and center. A green dot means that person has LEAD open right now. <b>Message</b> sends them a note through Ask LEAD.",
+      to:["theirMsgs","activity"]},
+    {ch:"Tools & resources",target:"#fbList",home:"tools",when:()=>!!(lead&&x&&x.watchFeedback),title:"Feedback responses",
+      text:"You see this as a coordinator or executive: every Give feedback response, newest first, with averages. Download a CSV or copy them all as text.",
+      from:["feedback"]},
+    {ch:"Inside an event",target:["#overlay .rd-dr","#overlay .drawer"],keepOverlay:true,wait:350,when:()=>tabOK("events")&&!!tmNextEvent(),
+      before:()=>{ttGo("events");const ne=tmNextEvent();if(ne)openDetail(ne.id);},title:"Inside an event",
+      text:"Tap any event for the basics: when, where, the host and directions. An approved event shows its readiness checklist here: six steps, then <b>Submit to the coordinators</b>. An event that isn't approved yet shows <b>Submit a proposal</b> instead.",
+      toLabel:"Submit goes to",to:["coordMsgs","activity","donow"]},
+    {ch:"Ask LEAD",target:"#askBtn",home:"campaign",title:"Ask LEAD",
+      text:"Bottom right, on every page. Ask “when's the next meeting”, “what's on today” or “who's in”, or type a name to search. “message Iris: running late” sends a note.",
+      from:["meetings","events","checkins","whos"]},
+    {ch:"Ask LEAD",target:["#askPanel .ask-tabs","#askPanel"],home:"campaign",ask:true,when:()=>!!x,before:()=>ttAsk(true),title:"Messages and Activity",
+      text:"<b>Messages</b> holds notes from teammates and readiness submissions; the badge counts what's unread. Coordinators also get each new feedback response here. <b>Activity</b> is the team's latest check-ins, cards moved, meetings added, approvals and feedback.",
+      from:["whos","ready","feedback","checkins","board"]},
+    {ch:"How it fits together",wide:true,home:"campaign",title:"How it all connects",
+      text:`<p>Nothing in LEAD stands alone. What you do in one place shows up in others:</p>${ttFlowList()}<p class="tt-tip">Questions? Ask LEAD → <b>message a coordinator</b>. Something confusing or broken? That's what Give feedback is for.</p>`}
+  ];
+  return L.filter(s=>!s.when||s.when());
+}
+
+function ttUI(){
+  if(TT.ui)return TT.ui;
+  const dim=document.createElement("div");dim.className="tt-dim";dim.innerHTML='<i class="tt-sh"></i><i class="tt-sh"></i><i class="tt-sh"></i><i class="tt-sh"></i>';
+  const spot=document.createElement("div");spot.className="tt-spot off";spot.setAttribute("aria-hidden","true");
+  const card=document.createElement("section");card.className="tt-card";card.setAttribute("role","dialog");card.setAttribute("aria-modal","true");card.setAttribute("aria-labelledby","ttTitle");card.setAttribute("aria-describedby","ttBody");
+  document.body.append(dim,spot,card);
+  card.addEventListener("click",e=>{const b=e.target.closest("[data-tt]");if(!b)return;const a=b.dataset.tt;
+    if(a==="next")ttShow(TT.i+1,1);else if(a==="back")ttShow(TT.i-1,-1);else if(a==="end")ttEnd(false);else if(a==="fb"){ttEnd(true);tmFeedback();}});
+  dim.addEventListener("click",()=>{card.classList.remove("nudge");void card.offsetWidth;card.classList.add("nudge");});
+  // Keys go to the tour first: arrows move, Esc stops, Tab stays inside the card, and the hub's own shortcuts wait.
+  window.addEventListener("keydown",e=>{if(!TT.on)return;const k=e.key;
+    if(k==="Escape"){e.preventDefault();e.stopPropagation();ttEnd(false);return;}
+    if(k==="ArrowRight"){e.preventDefault();e.stopPropagation();ttShow(TT.i+1,1);return;}
+    if(k==="ArrowLeft"){e.preventDefault();e.stopPropagation();if(TT.i>0)ttShow(TT.i-1,-1);return;}
+    if(k==="Tab"){const f=[...card.querySelectorAll("button")],i=f.indexOf(document.activeElement);
+      if(f.length&&(i<0||(e.shiftKey&&i===0)||(!e.shiftKey&&i===f.length-1))){e.preventDefault();(e.shiftKey?f[f.length-1]:f[0]).focus();}}
+    e.stopPropagation();},true);
+  const re=()=>{if(!TT.on||TT.raf)return;TT.raf=requestAnimationFrame(()=>{TT.raf=0;ttPlace();});};
+  window.addEventListener("resize",re);window.addEventListener("scroll",re,true);
+  return TT.ui={dim,spot,card,sh:[...dim.children]};
+}
+function ttCard(s,n,N){
+  const chip=k=>{const d=TT_NODE[k]||[k,"slate"];return `<span class="tt-chip" style="--tc:var(--t-${d[1]})">${esc(d[0])}</span>`;};
+  const row=(lab,L)=>L&&L.length?`<div class="tt-flow"><span class="tt-k">${esc(lab)}</span>${L.map(chip).join("")}</div>`:"";
+  const links=s.from||s.to?`<div class="tt-links"><div class="tt-lh">How it connects</div>${row("Comes from",s.from)}${row(s.toLabel||"Shows up in",s.to)}</div>`:"";
+  const last=n===N-1;
+  return `<div class="tt-top"><span class="tt-ch">${esc(s.ch||"")}</span><span class="tt-n">${n+1} of ${N}</span><button type="button" class="tt-x" data-tt="end" aria-label="Close the tutorial" title="Close (Esc)">×</button></div>
+  <div class="tt-bar" aria-hidden="true"><i style="width:${((n+1)/N*100).toFixed(1)}%"></i></div>
+  <div class="tt-mid"><h3 id="ttTitle">${esc(s.title)}</h3><div class="tt-body" id="ttBody" aria-live="polite">${s.text}</div>${links}</div>
+  <div class="tt-acts">${n===0?`<button type="button" class="btn sm ghost" data-tt="end">Not now</button>`:`<button type="button" class="btn sm ghost" data-tt="back">‹ Back</button>`}<span class="sp"></span>${last?`<button type="button" class="btn sm" data-tt="fb">Give feedback</button>`:""}<button type="button" class="btn sm tt-next" data-tt="next">${n===0?"Take the tutorial ›":last?"Finish":"Next ›"}</button></div>`;
+}
+function ttStart(at){
+  if(TT.on)return;const g=$("#gate");if(g&&!g.hidden)return;
+  ttUI();TT.steps=ttSteps();TT.from={tab:S.tab,htab:tmTab()};TT.on=true;ttMark();
+  if($("#overlay").innerHTML.trim())closeOverlay();
+  if(TM.askOpen)ttAsk(false);
+  document.documentElement.classList.add("touring");
+  TT.ui.spot.classList.add("off");ttShade(null);
+  clearInterval(TT.tick);TT.tick=setInterval(()=>{if(TT.on)ttPlace();},700);   // the page can re-draw under the tour (new data); keep the ring on its part
+  ttShow(at||0,1);
+}
+function ttEnd(finished){
+  if(!TT.on)return;TT.on=false;TT.seq++;clearInterval(TT.tick);
+  document.documentElement.classList.remove("touring");
+  if(TT.ui)TT.ui.card.innerHTML="";
+  if($("#overlay").innerHTML.trim())closeOverlay();
+  if(TM.askOpen)ttAsk(false);
+  ttMark();
+  const f=TT.from||{};                                     // back where they started
+  if(f.tab&&f.tab!==S.tab)ttGo(f.tab);
+  if(S.tab==="home"&&f.htab&&tmTab()!==f.htab){S.home.tab=f.htab;homeSave();render();}
+  window.scrollTo({top:0});
+  toast(finished?"That's the tour. Tutorial at the top runs it again.":"The tutorial is under Tutorial at the top whenever you want it.");
+  const b=$("#tbTour");if(b)try{b.focus({preventScroll:true});}catch(e){}
+}
+async function ttShow(n,dir){
+  if(!TT.on)return;dir=dir<0?-1:1;
+  if(n<0)n=0;if(n>=TT.steps.length)return ttEnd(true);
+  const seq=++TT.seq,s=TT.steps[n],{card}=TT.ui;
+  if(!s.keepOverlay&&$("#overlay").innerHTML.trim())closeOverlay();
+  if(!s.ask&&TM.askOpen)ttAsk(false);
+  if(s.home)ttHome(s.home);
+  if(s.before){try{await s.before();}catch(e){console.warn("[hub] tutorial",e);}}
+  if(s.wait)await new Promise(r=>setTimeout(r,s.wait));
+  await ttFrame();
+  if(!TT.on||seq!==TT.seq)return;
+  const t=s.target?ttFind(s.target):null;
+  if(s.target&&!t)return n+dir<0?ttShow(0,1):ttShow(n+dir,dir);           // not on this person's screen: skip it
+  TT.i=n;TT.el=t;
+  card.classList.toggle("wide",!!s.wide);card.innerHTML=ttCard(s,n,TT.steps.length);
+  ttPlace();
+  if(t)ttScroll(t);
+  ttPlace();
+  const nb=card.querySelector(".tt-next");if(nb)nb.focus({preventScroll:true});
+}
+/* Bring the part into view: on a computer, the part and the card sit together mid-screen; on a phone the card
+   docks along the bottom, so the part goes just under the top bar. Parts in the top bar or Ask LEAD don't move. */
+function ttScroll(t){
+  const bar=$("#shellTop"),pinned=!!bar&&/sticky|fixed/.test(getComputedStyle(bar).position);
+  if(t.closest(".shell-top")){if(!pinned&&window.scrollY)window.scrollTo({top:0,behavior:"instant"});return;}
+  if(t.closest("#askPanel")||t.id==="askBtn")return;
+  if(t.closest("#overlay")){try{t.scrollIntoView({block:"nearest",behavior:"instant"});}catch(e){t.scrollIntoView(false);}return;}
+  const vh=innerHeight,top=pinned?bar.offsetHeight:0,ch=TT.ui.card.offsetHeight,r=t.getBoundingClientRect(),gap=14;
+  let want;
+  if(innerWidth<=640)want=top+12;
+  else want=r.height+gap+ch<=vh-top-28?top+Math.max(gap,(vh-top-(r.height+gap+ch))/2):top+gap;
+  window.scrollBy({top:Math.round(r.top-want),left:0,behavior:"instant"});
+}
+function ttShade(R){
+  const sh=TT.ui.sh,vw=document.documentElement.clientWidth,vh=innerHeight;
+  const set=(el,l,t,w,h)=>{el.style.left=l+"px";el.style.top=t+"px";el.style.width=Math.max(0,w)+"px";el.style.height=Math.max(0,h)+"px";};
+  if(!R){set(sh[0],0,0,vw,vh);set(sh[1],0,vh,vw,0);set(sh[2],0,0,0,0);set(sh[3],vw,0,0,0);return;}
+  const T=Math.max(0,Math.min(vh,R.t)),B=Math.max(T,Math.min(vh,R.b)),L=Math.max(0,Math.min(vw,R.l)),Rt=Math.max(L,Math.min(vw,R.r));
+  set(sh[0],0,0,vw,T);set(sh[1],0,B,vw,vh-B);set(sh[2],0,T,L,B-T);set(sh[3],Rt,T,vw-Rt,B-T);
+}
+function ttPlace(){
+  if(!TT.on||!TT.ui)return;
+  const {spot,card}=TT.ui,s=TT.steps[TT.i];if(!s)return;
+  let t=TT.el;if(s.target&&!ttVis(t))t=TT.el=ttFind(s.target);
+  const vw=document.documentElement.clientWidth,vh=innerHeight,m=12,gap=14,phone=vw<=640;
+  const cw=phone?vw-2*m:Math.min(s.wide?600:400,vw-2*m);
+  card.style.width=cw+"px";
+  const ch=card.offsetHeight;
+  if(!t){spot.classList.add("off");ttShade(null);card.dataset.at="mid";card.style.left=Math.round((vw-cw)/2)+"px";card.style.top=Math.round(Math.max(m,(vh-ch)/2))+"px";return;}
+  const r=t.getBoundingClientRect(),p=s.pad==null?7:s.pad;
+  const R={l:r.left-p,t:r.top-p,w:r.width+2*p,h:r.height+2*p};R.r=R.l+R.w;R.b=R.t+R.h;
+  spot.classList.remove("off");
+  spot.style.left=R.l+"px";spot.style.top=R.t+"px";spot.style.width=R.w+"px";spot.style.height=R.h+"px";ttShade(R);
+  let top,left,at;
+  if(phone){const below=vh-R.b,above=R.t;at=below>=ch+gap||below>=above?"bottom":"top";top=at==="bottom"?vh-ch-m:m;left=m;}
+  else{
+    const cx=v=>Math.max(m,Math.min(v,vw-cw-m)),cy=v=>Math.max(m,Math.min(v,vh-ch-m));
+    if(vh-R.b>=ch+gap+m){at="below";top=R.b+gap;left=cx(R.l+R.w/2-cw/2);}
+    else if(R.t>=ch+gap+m){at="above";top=R.t-gap-ch;left=cx(R.l+R.w/2-cw/2);}
+    else if(vw-R.r>=cw+gap+m){at="right";left=R.r+gap;top=cy(R.t);}
+    else if(R.l>=cw+gap+m){at="left";left=R.l-gap-cw;top=cy(R.t);}
+    else{at="corner";left=vw-cw-m-8;top=vh-ch-m;}
+  }
+  card.dataset.at=at;card.style.left=Math.round(left)+"px";card.style.top=Math.round(top)+"px";
+}
+
+/* Tutorial and Give feedback, in the top bar for everyone. They go in before the light/dark switch; the name
+   button (added after sign-in) lands between them and the switch. */
+(function ttTopBar(){
+  const theme=document.getElementById("themeToggle");if(!theme||document.getElementById("tbTour"))return;
+  const w=document.createElement("div");w.className="tb-help";
+  w.innerHTML=`<button type="button" class="tb-btn" id="tbTour" title="Take the tutorial: a guided tour of LEAD" aria-label="Take the tutorial"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 0 1 4.8.9c0 1.7-2.4 2.2-2.4 3.6"/><path d="M12 17h.01"/></svg><span class="l">Tutorial</span></button><button type="button" class="tb-btn tb-fb" id="tbFeedback" title="Give feedback on a training session or on LEAD itself" aria-label="Give feedback"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3h11A2.5 2.5 0 0 1 20 5.5v8a2.5 2.5 0 0 1-2.5 2.5H10l-4.5 4v-4A1.5 1.5 0 0 1 4 14.5z"/><path d="M8.5 8.5h7M8.5 11.5h4.5"/></svg><span class="l">Give feedback</span><span class="s">Feedback</span></button>`;
+  theme.parentNode.insertBefore(w,theme);
+  w.querySelector("#tbTour").addEventListener("click",()=>ttStart(0));
+  w.querySelector("#tbFeedback").addEventListener("click",()=>{if(TT.on)ttEnd(true);tmFeedback();});
+})();
+/* The first time someone opens LEAD, the tour offers itself once the sign-in screen is gone. */
+(function ttFirstVisit(){
+  if(ttSeen())return;const t0=Date.now();
+  const iv=setInterval(()=>{
+    if(Date.now()-t0>60000){clearInterval(iv);return;}
+    const g=document.getElementById("gate");if(g&&!g.hidden)return;
+    clearInterval(iv);
+    setTimeout(()=>{if(!TT.on&&!ttSeen()&&!$("#overlay").innerHTML.trim())ttStart(0);},900);
+  },400);
+})();
 
 /* ============ start ============ */
 function start(saved){if(saved&&saved.tab)S.tab=saved.tab;if(saved&&saved.pb)S.pb=saved.pb;applyView();if(!tabOK(S.tab))S.tab="home";go(S.tab);boot();}

@@ -2032,6 +2032,73 @@ select.gf-in{padding:8px 0}
 .ask-msg.fb{border-left:3px solid var(--lead-gold)}
 .ask-msg.fb.new{background:color-mix(in srgb,var(--lead-gold) 12%,transparent)}
 .ask-msg.fb .linkbtn{margin-top:4px}
+
+/* ---------- the top bar: Tutorial and Give feedback ---------- */
+.tb-help{display:flex;align-items:center;gap:6px;flex:none}
+.tb-btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;height:34px;padding:0 13px 0 10px;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:999px;font:600 13px var(--body);cursor:pointer;white-space:nowrap}
+.tb-btn svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.tb-btn:hover{border-color:var(--lead-gold)}
+.tb-btn:focus-visible{outline:2px solid var(--lead-gold);outline-offset:2px}
+.tb-fb{background:var(--lead-gold);border-color:var(--lead-gold);color:#1b1400}
+.tb-fb:hover{border-color:var(--lead-gold);filter:brightness(1.06)}
+.tb-btn .s{display:none}
+@media (max-width:1100px){#tbTour{width:34px;padding:0}#tbTour .l{display:none}}
+@media (max-width:640px){.tb-fb .l{display:none}.tb-fb .s{display:inline}.tb-fb{padding:0 11px 0 9px}}
+@media (max-width:340px){.tb-help{gap:5px}.tb-fb{width:34px;padding:0}.tb-fb .s{display:none}}
+
+/* ---------- the tutorial: dim the page, ring the part in gold, explain it in a card ---------- */
+.tt-dim,.tt-spot,.tt-card{display:none}
+:root.touring .tt-dim{display:block;position:fixed;inset:0;z-index:2000;background:transparent}
+:root.touring .tt-sh{position:absolute;display:block;background:rgba(4,9,26,.66);transition:left .3s ease,top .3s ease,width .3s ease,height .3s ease}
+:root.touring .tt-spot{display:block;position:fixed;z-index:2001;pointer-events:none;border:2px solid var(--lead-gold);border-radius:12px;
+  box-shadow:0 0 0 5px color-mix(in srgb,var(--lead-gold) 28%,transparent);
+  transition:left .3s ease,top .3s ease,width .3s ease,height .3s ease}
+:root.touring .tt-spot.off{left:50%!important;top:45%!important;width:0!important;height:0!important;border-width:0;box-shadow:none}
+:root.touring .tt-card{display:block;position:fixed;z-index:2002;background:var(--surface);color:var(--ink);border:1px solid var(--line);border-top:4px solid var(--lead-gold);
+  border-radius:16px;box-shadow:0 24px 64px rgba(0,0,0,.45);padding:12px 16px 14px;max-height:calc(100vh - 24px);transition:left .3s ease,top .3s ease;font-family:var(--body)}
+:root.touring .tt-card{flex-direction:column}
+:root.touring .tt-card:not(:empty){display:flex}
+.tt-mid{overflow:auto;min-height:0;flex:1 1 auto;overscroll-behavior:contain}
+.tt-top,.tt-bar,.tt-acts{flex:none}
+.tt-card.nudge{animation:ttNudge .35s}
+@keyframes ttNudge{25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+.tt-top{display:flex;align-items:center;gap:10px;font-size:11.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase}
+.tt-ch{color:color-mix(in srgb,var(--lead-gold) 60%,var(--ink))}
+.tt-n{color:var(--muted);letter-spacing:.04em}
+.tt-x{margin-left:auto;border:0;background:none;font:400 22px/1 var(--body);color:var(--muted);cursor:pointer;padding:2px 6px;border-radius:8px}
+.tt-x:hover{color:var(--ink);background:color-mix(in srgb,var(--ink) 7%,transparent)}
+.tt-bar{height:3px;border-radius:3px;background:var(--line);margin:8px 0 12px;overflow:hidden}
+.tt-bar i{display:block;height:100%;background:var(--lead-gold);transition:width .3s ease}
+.tt-card h3{margin:0 0 6px;font:800 20px/1.2 var(--display)}
+.tt-body{font-size:14.5px;line-height:1.5}
+.tt-body p{margin:0 0 7px}
+.tt-tip{font-size:12.5px;color:var(--muted)}
+.tt-card kbd{font:600 11.5px var(--body);border:1px solid var(--line);border-bottom-width:2px;border-radius:5px;padding:0 5px;background:var(--surface);color:var(--ink)}
+@media (hover:none){.tt-keys{display:none}}
+.tt-links{margin:10px 0 2px;padding:9px 11px 10px;border-radius:12px;background:color-mix(in srgb,var(--ink) 5%,transparent);border:1px dashed var(--line)}
+.tt-lh{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.tt-flow{display:flex;flex-wrap:wrap;align-items:center;gap:5px;margin-top:7px}
+.tt-k{font-size:12px;font-weight:600;color:var(--muted);min-width:84px}
+.tt-chip{display:inline-flex;align-items:center;gap:6px;padding:3px 10px 3px 8px;border-radius:999px;font-size:12.5px;font-weight:600;color:var(--ink);
+  background:color-mix(in srgb,var(--tc) 15%,transparent);border:1px solid color-mix(in srgb,var(--tc) 45%,transparent)}
+.tt-chip::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--tc);flex:none}
+.tt-acts{display:flex;align-items:center;gap:8px;margin-top:14px}
+.tt-acts .sp{flex:1}
+.tt-card .tt-next{background:var(--lead-gold);border-color:var(--lead-gold);color:#1b1400;font-weight:700}
+.tt-flows{list-style:none;margin:6px 0 10px;padding:0;display:grid;gap:5px}
+.tt-flows li{display:grid;grid-template-columns:188px 16px 1fr;gap:6px;align-items:baseline;font-size:13.5px;line-height:1.4;padding:6px 9px;border-radius:10px;background:color-mix(in srgb,var(--ink) 5%,transparent)}
+.tt-flows b{font-weight:700}
+.tt-flows i{font-style:normal;font-weight:800;color:color-mix(in srgb,var(--lead-gold) 70%,var(--ink))}
+.gd-sec .tt-flows{margin-top:10px}
+@media (max-width:640px){
+  :root.touring .tt-card{border-radius:18px;max-height:min(58vh,480px)}
+  :root.touring .tt-card[data-at="mid"]{max-height:calc(100vh - 24px)}
+  .tt-flows li{grid-template-columns:1fr;gap:1px}
+  .tt-flows i{display:none}
+  .tt-card h3{font-size:18px}
+}
+@media (prefers-reduced-motion:reduce){:root.touring .tt-spot,:root.touring .tt-card,:root.touring .tt-sh,.tt-bar i{transition:none}.tt-card.nudge{animation:none}}
+@media print{.tb-help,.tt-dim,.tt-spot,.tt-card{display:none!important}}
 </style>
 </head>
 <body>
@@ -2087,6 +2154,6 @@ select.gf-in{padding:8px 0}
   </div>
 </div>
 <noscript><p style="padding:24px;font:16px system-ui">LEAD needs JavaScript turned on.</p></noscript>
-<script type="module" src="js/gate.js?v=202611091058"></script>
+<script type="module" src="js/gate.js?v=202611091745"></script>
 </body>
 </html>

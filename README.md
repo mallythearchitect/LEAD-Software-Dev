@@ -44,7 +44,7 @@ The **owner** (the first person to claim the hub) sees and changes everything an
 | `admin.html`, `js/admin.js` | The owner page: waiting list, people, name list, data. |
 | `firestore.rules` | The lock. Paste into Firebase console → Firestore → Rules → Publish after every change. |
 | `js/dev/mock-fb.js` | A pretend database for testing on your own computer. Only works on `localhost`. |
-| `tools/team-ui.js`, `tools/team.css` | The team home (Campaign, My role, Tools & resources, How LEAD runs), the project board, Calendar with the center switcher and keyholder codes, Settings and Who's who for everyone, and the Ask LEAD assistant. Added to `js/app.js` and `index.html` by the build. |
+| `tools/team-ui.js`, `tools/team.css` | The team home (Campaign, My role, Tools & resources, How LEAD runs), the project board, Calendar with the center switcher and keyholder codes, Settings and Who's who for everyone, the Ask LEAD assistant, and the tutorial (a guided tour that lights up each part and says what feeds it; Tutorial and Give feedback sit in the top bar). Added to `js/app.js` and `index.html` by the build. |
 | `tools/make_lock.py`, `tools/make_codes.py` | Make a new team-password check value, or scramble a center's door/Wi-Fi/computer codes with the team password (pasted on the owner page). |
 | `tools/split_hub.py`, `tools/gate.*` | The build tool and the sign-in screen's markup and styles. |
 | `img/` | LEAD's logo, wordmark and icons. |
