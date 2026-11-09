@@ -111,6 +111,7 @@ function tmProgramsOn(d){
 }
 function tmNextEvent(){const t0=todayISO();return allE().filter(e=>e.date&&(e.date>=t0||(e.end_date&&e.end_date>=t0))).sort((a,b)=>(a.date+(tm24(a.time)||"99"))<(b.date+(tm24(b.time)||"99"))?-1:1)[0]||null;}
 const tmApproved=e=>{const a=assessOf(e);return !!((S.edits[e.id]||{}).approved||["GO","GO IF IT FITS"].includes(a.decision)||rdForEvent(e.id));};
+const tmProposalFormUrl=()=>((S.settings||{}).proposalForm||"").trim()||"proposal.html";
 function tmSigsToday(){const t0=todayISO();return S.shifts.filter(x=>x.date===t0).reduce((a,x)=>a+(+x.sigs||0),0);}
 function tmSigsByCenter(){
   const m={},add=(c,n)=>{n=+n||0;if(!n)return;c=c||"";m[c]=(m[c]||0)+n;};
@@ -611,6 +612,8 @@ S.evMore={};
 const tmOpenDetail0=openDetail;
 openDetail=function(id,keep){tmOpenDetail0(id,keep);
   try{const dr=$("#overlay .drawer"),ed=dr&&dr.querySelector(".edit");const r=getRec(id);if(!ed||!r||!isEvent(r)||ed.closest("details.ev-more"))return;
+    const rdBox=dr.querySelector(".rd-dr");
+    if(!tmApproved(r)&&r.date&&r.date>=todayISO()){const box=document.createElement("div");box.className="rd-dr ev-prop";box.innerHTML=`<div><h3>Needs approval first</h3><div class="small muted">An event LEAD hasn't said yes to yet. Send the proposal; once it's approved, the readiness checklist opens here.</div></div><a class="btn sm pri" href="${esc(tmProposalFormUrl())}" target="_blank" rel="noopener">Submit a proposal</a>`;if(rdBox)rdBox.replaceWith(box);else ed.parentNode.insertBefore(box,ed);}
     const det=document.createElement("details");det.className="ev-more";det.open=!!S.evMore[id];
     det.innerHTML=`<summary><span>More: status, notes and the after-event report</span><small>${FB&&FB.owner?"and your assessment tools":""}</small></summary>`;
     ed.parentNode.insertBefore(det,ed);det.appendChild(ed);det.addEventListener("toggle",()=>{S.evMore[id]=det.open;});
@@ -634,7 +637,7 @@ function rGuide(){
   const sec=(title,body)=>`<section class="gd-sec"><h2>${esc(title)}</h2>${body}</section>`;
   const li=items=>`<ul class="gd-list">${items.map(x=>`<li>${x}</li>`).join("")}</ul>`;
   return `<div class="gd">
-  <div class="gd-hero"><img src="img/lead-logo.png" alt="LEAD" class="gd-logo"><div><h1>How to use LEAD</h1><p>The team's hub for ${esc(FB&&FB.centerLabel||"your center")}: what's happening, what's due, who's doing what, and how LEAD runs. This page is the guide for demo week. Tap any button to jump there.</p></div></div>
+  <div class="gd-hero"><img src="img/lead-logo.png" alt="LEAD" class="gd-logo"><div><h1>How to use LEAD</h1><p>The team's hub for ${esc(FB&&FB.centerLabel||"your center")}: what's happening, what's due, who's doing what, and how LEAD runs. Tap any button to jump there.</p><div class="chips" style="margin-top:10px"><a class="btn sm pri" href="https://claude.ai/artifact/EpCCenW6LpkZXFbcUHkfpE" target="_blank" rel="noopener">Open the screenshot walkthrough ↗</a></div></div></div>
   ${sec("Getting in",li([
     "Open <b>lead.thebiggercanvas.com</b>. Type the team password your coordinator gave you (tick <i>keep this device unlocked</i> on your own phone or laptop, not on a shared computer), then <b>Continue with Google</b>.",
     "First time: you'll see <i>Waiting to be let in</i>. The owner lets you in from the owner page; the page opens by itself when that happens.",
@@ -689,7 +692,7 @@ function rApproved(){
   const ok=E.filter(tmApproved),rest=E.filter(e=>!tmApproved(e)).slice(0,24);
   return `<div class="toolrow"><span class="muted small">Events LEAD said yes to. Each one gets a readiness checklist; submit it to the coordinators when it's ready.</span><span class="sp"></span><span class="small muted">${ok.length}</span></div>
   ${ok.length?`<div class="ev-grid" style="margin-top:12px">${ok.map(tmEventTileRd).join("")}</div>`:`<p class="empty">Nothing approved and coming up yet.${tmLeadish()?" Approve one below.":""}</p>`}
-  ${tmLeadish()&&rest.length?`<h3 class="ev-wk">Coming up, not approved yet</h3><div class="rows">${rest.map(e=>`<div class="row" data-open="${e.id}"><div><div class="n">${esc(e.name)}</div><div class="d">${esc([fmtDate(e.date),e.time,townOf(e)].filter(Boolean).join(" · "))}</div></div><div class="r">${S.canWrite===false?"":`<button class="btn sm" data-act="noop" data-tm="approve" data-id="${e.id}" data-on="0">Approve</button>`}</div></div>`).join("")}</div>`:""}`;
+  ${rest.length?`<h3 class="ev-wk">Coming up, not approved yet</h3><div class="rows">${rest.map(e=>`<div class="row" data-open="${e.id}"><div><div class="n">${esc(e.name)}</div><div class="d">${esc([fmtDate(e.date),e.time,townOf(e)].filter(Boolean).join(" · "))}</div></div><div class="r"><a class="btn sm" href="${esc(tmProposalFormUrl())}" target="_blank" rel="noopener" data-act="noop">Submit a proposal</a>${tmLeadish()&&S.canWrite!==false?` <button class="btn sm" data-act="noop" data-tm="approve" data-id="${e.id}" data-on="0">Approve</button>`:""}</div></div>`).join("")}</div>`:""}`;
 }
 
 /* ---------- Meetings as tiles, opened in a clean sheet ---------- */

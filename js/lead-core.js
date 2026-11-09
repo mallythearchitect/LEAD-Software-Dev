@@ -272,6 +272,13 @@ export function makeHubDB(backend, ctx, recordCenters) {
   const newId = () => Array.from(crypto.getRandomValues(new Uint8Array(15)), b => "abcdefghijklmnopqrstuvwxyz0123456789"[b % 36]).join("");
   const clean = d => JSON.parse(JSON.stringify(d === undefined ? {} : d));
   const snapOf = docs => ({ docs: docs.map(([id, d]) => ({ id, exists: true, data: () => d })), size: docs.length, empty: !docs.length });
+  const isMockTask = (id, d) => !!(d && d.demo) || /^[a-z]{2}-tk\d+$/.test(id);
+  function starterTasks(center) {
+    const day = n => { const t = new Date(); t.setDate(t.getDate() + n); return t.toISOString().slice(0, 10); };
+    return [["Confirm tabling spot for the resource fair", "Events", "todo", 1], ["Follow up with two Board of Champions invitees", "Board of Champions", "doing", 3],
+      ["Drop flyers at three barber shops", "B-LEAD", "todo", 2], ["Call the parent group about the info night", "Charters & leaders", "waiting", 5], ["Order more clipboards and pens", "Other", "todo", 7]]
+      .map(([title, section, status, n], i) => [`${center}-starter${i + 1}`, { title, section, status, due: day(n), priority: i ? "Medium" : "High", notes: "A starter task (made up). Move it or finish it; it saves as yours.", createdAt: day(0), repeat: "", dow: 4, doneOn: "", fixed: false, demo: true, center }]);
+  }
 
   function recordCenter(id) {
     if (recordCenters && recordCenters.has(id)) return recordCenters.get(id);
@@ -314,7 +321,15 @@ export function makeHubDB(backend, ctx, recordCenters) {
       const out = () => {
         if (!shared || !mine) return;
         cache.tasks = shared; cache[PERSONAL] = mine;
-        const all = [...[...shared].filter(([, d]) => inView(d)), ...mine];
+        // the shared list is written only by the owner: the owner sees their own tasks and never the mock ones;
+        // everyone else sees only the mock tasks (demo: true, or the made-up ids), never the owner's
+        const team = [...shared].filter(([id, d]) => inView(d) && (ctx.owner ? !isMockTask(id, d) : isMockTask(id, d)));
+        const all = [...team, ...mine];
+        // a center with no mock tasks yet still gives everyone else a starter list (not saved; a move saves a personal copy)
+        if (!ctx.owner && ctx.center && !team.some(([, d]) => d.center === ctx.center)) {
+          const have = new Set([...mine].map(([id]) => id));
+          for (const [id, d] of starterTasks(ctx.center)) if (!have.has(id)) all.push([id, d]);
+        }
         next(snapOf(all));
       };
       const u1 = listenOne("tasks", m => { shared = m; out(); }, err);

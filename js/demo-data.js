@@ -107,7 +107,7 @@ export function demoBundle(today = new Date(), opts = {}) {
     put("edits", `${p}-t2`, { status: "Contacted", notes: "", next_step: "Call back", next_date: iso(addDays(today, 6)), center: c.id });
 
     // work
-    TASKS.slice(0, 4 + ci % 3).forEach(([title, section], i) => put("tasks", `${p}-tk${i + 1}`, { title, section, status: pick(["todo", "todo", "doing", "waiting", "done"]), due: iso(addDays(today, i * 2 - 1)), priority: pick(["High", "Medium", "Medium", "Low"]), notes: "", createdAt: t0, repeat: "", dow: 4, doneOn: "", fixed: false, center: c.id }));
+    TASKS.slice(0, 4 + ci % 3).forEach(([title, section], i) => put("tasks", `${p}-tk${i + 1}`, { title, section, status: pick(["todo", "todo", "doing", "waiting", "done"]), due: iso(addDays(today, i * 2 - 1)), priority: pick(["High", "Medium", "Medium", "Low"]), notes: "", createdAt: t0, repeat: "", dow: 4, doneOn: "", fixed: false, demo: true, center: c.id }));
     put("meetings", `${p}-m1`, { title: `${city} team check-in (demo)`, date: iso(addDays(today, -3)), time: "15:00", where: `${city} center`, with: "Center team", notes: "Went over the week's events.", takeaways: "Two new tabling spots confirmed.", next: "Next check-in in two weeks", createdAt: t0, center: c.id });
     put("meetings", `${p}-m2`, { title: `${city} coordinator sync (demo)`, date: iso(addDays(today, 1 + ci % 3)), time: ["10:00", "13:30", "16:00"][ci % 3], where: `${city} center`, with: "Coordinator and assistant coordinators", notes: "", takeaways: "", next: "", createdAt: t0, center: c.id });
     if (c.id === "east-hartford") {

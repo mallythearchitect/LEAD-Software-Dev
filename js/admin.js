@@ -293,6 +293,9 @@ function paneData() {
       ${demo ? "" : `<button class="btn pri" data-act="demo-load" style="margin-top:12px">Load the demo data (made up, all 7 centers)</button>`}
       ${(() => { const have = new Set(Object.values(S.index.sets || {}).map(x => x.center)); const empty = CENTERS.filter(c => !have.has(c.id)); const others = gs.some(g => g.label === DEMO_OTHERS_LABEL);
         return empty.length && !others ? `<button class="btn" data-act="demo-others" style="margin-top:12px">Load demo data for the ${empty.length} center${empty.length === 1 ? "" : "s"} without data (${empty.map(c => c.name).join(", ")})</button>` : ""; })()}
+      <div style="margin-top:16px;padding-top:14px;border-top:1px solid rgba(128,128,128,.25)"><b>Mock tasks for the team</b>
+        <div class="small muted">A short made-up task list per center, so everyone else's My role, Do now and Board have something on them. Only the team sees these; your own tasks stay yours and never show to anyone else.</div>
+        <button class="btn" data-act="demo-tasks" style="margin-top:8px">Add the mock tasks (all 7 centers)</button> <button class="btn sm" data-act="demo-tasks-out" style="margin-top:8px">Take them out</button></div>
       <div class="bar" id="bar" hidden><i></i></div></div>
     <div class="card"><h2>Load a data file</h2>
       <p class="small muted">For example <i>my-data-east-hartford.json</i> from the "Firebase import files" folder on your Desktop. Loading a file replaces the lists it carries for its centers.</p>
@@ -398,6 +401,16 @@ const ACTIONS = {
     if (!only.length) return toast("Every center has data already.");
     const { ops } = bundleOps(demoBundle(new Date(), { only }), S.index, me.email, new Date().toISOString());
     await runOps(ops, `Demo data loaded for ${only.map(centerName).join(", ")}`); await refresh();
+  },
+  async "demo-tasks"() {
+    const t = demoBundle(new Date(), { only: CENTERS.map(c => c.id) }).docs.tasks || {};
+    const ops = Object.entries(t).map(([id, data]) => ({ op: "set", col: "tasks", id, data: { ...data, demo: true } }));
+    await runOps(ops, `${ops.length} mock tasks added for the team`);
+  },
+  async "demo-tasks-out"() {
+    if (!confirm("Take out the team's mock tasks? Your own tasks are not touched.")) return;
+    const t = demoBundle(new Date(), { only: CENTERS.map(c => c.id) }).docs.tasks || {};
+    await runOps(Object.keys(t).map(id => ({ op: "del", col: "tasks", id })), "Mock tasks taken out");
   },
   async "demo-load"() {
     const { ops } = bundleOps(demoBundle(), S.index, me.email, new Date().toISOString());
